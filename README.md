@@ -1,8 +1,5 @@
 # Nouto Extended
 
-[![Build](https://img.shields.io/github/actions/workflow/status/rifaalfiansyah/nouto-extended/build.yml?branch=master&style=for-the-badge)](https://github.com/rifaalfiansyah/nouto-extended/actions)
-[![License](https://img.shields.io/github/license/rifaalfiansyah/nouto-extended?style=for-the-badge&label=license)](/LICENSE)
-
 **Nouto Extended** is an enhanced fork of [Nouto](https://github.com/HotarunIchijou/Nouto) — a simple, offline-first Android notes app built in Kotlin with Material 3 Expressive Design. It focuses heavily on smooth transitions, intuitive gestures, and a clean interface that stays out of your way, with additional stability fixes and performance improvements.
 
 ## ✨ Key features
