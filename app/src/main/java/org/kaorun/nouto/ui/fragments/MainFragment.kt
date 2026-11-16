@@ -1,5 +1,7 @@
 package org.kaorun.nouto.ui.fragments
 
+import android.annotation.SuppressLint
+import android.content.res.Configuration
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -8,20 +10,26 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsetsController
+import android.view.animation.AnimationUtils
+import android.view.animation.OvershootInterpolator
+import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
+import androidx.navigation.NavDirections
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.navGraphViewModels
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.StaggeredGridLayoutManager
+import androidx.transition.ChangeBounds
+import androidx.transition.Fade
 import androidx.transition.TransitionManager
-import com.google.android.material.navigation.NavigationView
+import androidx.transition.TransitionSet
 import com.google.android.material.sidesheet.SideSheetDialog
 import com.google.android.material.snackbar.Snackbar
+import org.kaorun.nouto.BuildConfig
 import org.kaorun.nouto.R
 import org.kaorun.nouto.data.Note
 import org.kaorun.nouto.databinding.FragmentMainBinding
@@ -41,6 +49,7 @@ class MainFragment : BaseFragment(R.layout.fragment_main) {
     private lateinit var noteAdapter: NoteAdapter
     private val viewModel: NotesViewModel by navGraphViewModels(R.id.nav_graph)
     private val searchViewModel: SearchViewModel by viewModels()
+    private var currentLayoutMode: LayoutMode? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -92,6 +101,8 @@ class MainFragment : BaseFragment(R.layout.fragment_main) {
             binding.notesEmptyLayout.root.isVisible = notes.isEmpty() && !isSearching
             binding.nothingFoundLayout.root.isVisible = notes.isEmpty() && isSearching
         }
+
+        viewModel.deletedNotes.observe(viewLifecycleOwner) {}
 
         viewModel.pendingDelete.observe(viewLifecycleOwner) { note ->
             note ?: return@observe
@@ -146,7 +157,8 @@ class MainFragment : BaseFragment(R.layout.fragment_main) {
                 )
             } else {
                 val isLightMode =
-                    AppCompatDelegate.getDefaultNightMode() == AppCompatDelegate.MODE_NIGHT_NO
+                    (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) !=
+                        Configuration.UI_MODE_NIGHT_YES
                 WindowInsetsControllerCompat(
                     window,
                     window.decorView
@@ -154,23 +166,37 @@ class MainFragment : BaseFragment(R.layout.fragment_main) {
             }
         }
 
-        val navigationView =
-            sideSheetDialog.findViewById<NavigationView>(R.id.navigation_view)!!
-        InsetsHandler.applyViewInsets(navigationView)
+        sideSheetDialog.findViewById<View>(R.id.sidebar_container)?.let { container ->
+            InsetsHandler.applyViewInsets(container)
+        }
 
-        navigationView.setNavigationItemSelectedListener { menuItem ->
-            when (menuItem.itemId) {
-                R.id.trash -> {
-                    sideSheetDialog.dismiss()
-                    openTrashFragment()
-                }
-                R.id.settings -> {
-                    sideSheetDialog.dismiss()
-                    openSettingsFragment()
-                }
-                else -> sideSheetDialog.dismiss()
-            }
-            true
+        sideSheetDialog.findViewById<TextView>(R.id.sidebar_version)
+            ?.text = "v${BuildConfig.VERSION_NAME}"
+
+        val notesCount = viewModel.displayedNotes.value?.size ?: 0
+        sideSheetDialog.findViewById<TextView>(R.id.nav_notes_count)?.apply {
+            isVisible = notesCount > 0
+            text = notesCount.toString()
+        }
+
+        val trashCount = viewModel.deletedNotes.value?.size ?: 0
+        sideSheetDialog.findViewById<TextView>(R.id.nav_trash_count)?.apply {
+            isVisible = trashCount > 0
+            text = trashCount.toString()
+        }
+
+        sideSheetDialog.findViewById<View>(R.id.nav_notes)?.setOnClickListener {
+            sideSheetDialog.dismiss()
+        }
+
+        sideSheetDialog.findViewById<View>(R.id.nav_trash)?.setOnClickListener {
+            sideSheetDialog.dismiss()
+            openTrashFragment()
+        }
+
+        sideSheetDialog.findViewById<View>(R.id.nav_settings)?.setOnClickListener {
+            sideSheetDialog.dismiss()
+            openSettingsFragment()
         }
     }
 
@@ -246,41 +272,67 @@ class MainFragment : BaseFragment(R.layout.fragment_main) {
         )
     }
 
-    private fun openNoteFragment(noteId: Int?) {
+    private fun navigate(directions: NavDirections) {
         TransitionManager.endTransitions(binding.root.parent as ViewGroup)
-        findNavController().navigate(
-            MainFragmentDirections.actionMainFragmentToNoteFragment(noteId ?: -1)
-        )
+        findNavController().navigate(directions)
     }
 
-    private fun openTrashFragment() {
-        TransitionManager.endTransitions(binding.root.parent as ViewGroup)
-        findNavController().navigate(
-            MainFragmentDirections.actionMainFragmentToTrashFragment()
-        )
-    }
+    private fun openNoteFragment(noteId: Int?) =
+        navigate(MainFragmentDirections.actionMainFragmentToNoteFragment(noteId ?: -1))
 
-    private fun openSettingsFragment() {
-        TransitionManager.endTransitions(binding.root.parent as ViewGroup)
-        findNavController().navigate(
-            MainFragmentDirections.actionMainFragmentToSettingsMainFragment()
-        )
-    }
+    private fun openTrashFragment() =
+        navigate(MainFragmentDirections.actionMainFragmentToTrashFragment())
+
+    private fun openSettingsFragment() =
+        navigate(MainFragmentDirections.actionMainFragmentToSettingsMainFragment())
 
     private fun setupLayoutMode() {
         viewModel.layoutMode.observe(viewLifecycleOwner) { layoutMode ->
-            applyLayoutMode(layoutMode)
+            val animate = currentLayoutMode != null && currentLayoutMode != layoutMode
+            currentLayoutMode = layoutMode
+            applyLayoutMode(layoutMode, animate)
         }
     }
 
-    private fun applyLayoutMode(layoutMode: LayoutMode) {
+    @SuppressLint("PrivateResource")
+    private fun applyLayoutMode(layoutMode: LayoutMode, animate: Boolean = false) {
         binding.layoutButton.setIconResource(
             if (layoutMode == LayoutMode.GRID) R.drawable.view_agenda_24px
             else R.drawable.grid_view_24px
         )
 
-        binding.recyclerView.layoutManager =
-            StaggeredGridLayoutManager(layoutMode.spanCount, RecyclerView.VERTICAL)
+        if (animate) {
+            binding.layoutButton.animate().cancel()
+            binding.layoutButton.scaleX = 0.8f
+            binding.layoutButton.scaleY = 0.8f
+            binding.layoutButton.animate()
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(300L)
+                .setInterpolator(OvershootInterpolator(1.6f))
+                .start()
+
+            TransitionManager.endTransitions(binding.recyclerView)
+            val transition = TransitionSet().apply {
+                ordering = TransitionSet.ORDERING_TOGETHER
+                addTransition(ChangeBounds())
+                addTransition(Fade(Fade.IN))
+                duration = 380L
+                interpolator = AnimationUtils.loadInterpolator(
+                    requireContext(),
+                    com.google.android.material.R.interpolator.m3_sys_motion_easing_emphasized
+                )
+            }
+            TransitionManager.beginDelayedTransition(binding.recyclerView, transition)
+        }
+
+        val existingLayoutManager = binding.recyclerView.layoutManager as? StaggeredGridLayoutManager
+        if (existingLayoutManager != null) {
+            existingLayoutManager.spanCount = layoutMode.spanCount
+        } else {
+            binding.recyclerView.layoutManager =
+                StaggeredGridLayoutManager(layoutMode.spanCount, RecyclerView.VERTICAL)
+        }
 
         repeat(binding.recyclerView.itemDecorationCount) {
             binding.recyclerView.removeItemDecorationAt(0)
@@ -299,6 +351,7 @@ class MainFragment : BaseFragment(R.layout.fragment_main) {
         )
 
         binding.recyclerView.clipChildren = layoutMode == LayoutMode.GRID
+        binding.recyclerView.invalidateItemDecorations()
     }
 
     private fun switchLayout() {
@@ -307,6 +360,7 @@ class MainFragment : BaseFragment(R.layout.fragment_main) {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        currentLayoutMode = null
         _binding = null
     }
 }

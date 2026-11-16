@@ -41,14 +41,6 @@
                 android:spacing="8dp">
 
                 <com.google.android.material.button.MaterialButton
-                    style="@style/Widget.Material3Expressive.Button"
-                    android:id="@+id/button_save"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/save"
-                    android:visibility="gone" />
-
-                <com.google.android.material.button.MaterialButton
                     style="@style/Widget.Material3Expressive.Button.IconButton.Filled"
                     android:id="@+id/button_menu"
                     android:layout_width="wrap_content"
@@ -93,33 +85,95 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 tools:ignore="TextContrastCheck,VisualLintTextFieldSize" />
 
-            <com.google.android.material.divider.MaterialDivider
-                android:id="@+id/title_divider"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_marginHorizontal="24dp"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="16dp"
-                app:layout_constraintWidth_max="840dp"
-                app:layout_constraintTop_toBottomOf="@id/note_title"
-                app:layout_constraintBottom_toTopOf="@id/note_content"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent" />
-
             <Space
                 android:id="@+id/note_content_spacing"
                 android:layout_width="match_parent"
                 android:layout_height="16dp"
                 android:visibility="gone"
+                app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintBottom_toTopOf="@id/note_content" />
+                app:layout_constraintEnd_toEndOf="parent" />
+
+            <LinearLayout
+                android:id="@+id/note_metadata_container"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="24dp"
+                android:layout_marginTop="8dp"
+                android:clipChildren="false"
+                android:orientation="horizontal"
+                app:layout_goneMarginTop="16dp"
+                app:layout_constraintWidth_max="840dp"
+                app:layout_constraintTop_toBottomOf="@id/note_title"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <com.google.android.material.button.MaterialButton
+                    style="@style/Widget.Material3Expressive.Button.TonalButton"
+                    android:id="@+id/note_time"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minWidth="0dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:ellipsize="end"
+                    android:focusable="false"
+                    android:gravity="center"
+                    android:paddingHorizontal="8dp"
+                    android:singleLine="true"
+                    android:textAlignment="center"
+                    android:textColor="?colorOnSurfaceVariant"
+                    app:backgroundTint="?colorSurfaceBright"
+                    tools:text="Today, 4:10 PM" />
+
+                <com.google.android.material.button.MaterialButton
+                    style="@style/Widget.Material3Expressive.Button.TonalButton"
+                    android:id="@+id/note_words"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/recycler_view_segmented_list_margin"
+                    android:layout_weight="1"
+                    android:minWidth="0dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:ellipsize="end"
+                    android:focusable="false"
+                    android:gravity="center"
+                    android:paddingHorizontal="8dp"
+                    android:singleLine="true"
+                    android:textAlignment="center"
+                    android:textColor="?colorOnSurfaceVariant"
+                    app:backgroundTint="?colorSurfaceBright"
+                    tools:text="2 Words" />
+
+                <com.google.android.material.button.MaterialButton
+                    style="@style/Widget.Material3Expressive.Button.TonalButton"
+                    android:id="@+id/note_characters"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/recycler_view_segmented_list_margin"
+                    android:layout_weight="1"
+                    android:minWidth="0dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:ellipsize="end"
+                    android:focusable="false"
+                    android:gravity="center"
+                    android:paddingHorizontal="8dp"
+                    android:singleLine="true"
+                    android:textAlignment="center"
+                    android:textColor="?colorOnSurfaceVariant"
+                    app:backgroundTint="?colorSurfaceBright"
+                    tools:text="10 Characters" />
+            </LinearLayout>
 
             <com.onegravity.rteditor.RTEditText
                 android:id="@+id/note_content"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="24dp"
+                android:layout_marginTop="12dp"
                 android:accessibilityTraversalAfter="@id/floating_toolbar"
                 android:backgroundTint="@android:color/transparent"
                 android:focusable="true"
@@ -129,9 +183,11 @@
                 android:inputType="textCapSentences|textMultiLine"
                 android:textAppearance="?textAppearanceTitleLarge"
                 app:layout_constraintWidth_max="840dp"
+                app:layout_constraintTop_toBottomOf="@id/note_metadata_container"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintVertical_bias="0"
                 tools:ignore="TextContrastCheck,VisualLintTextFieldSize" />
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.core.widget.NestedScrollView>
@@ -163,50 +219,125 @@
     </com.google.android.material.button.MaterialButtonGroup>
 
     <com.google.android.material.floatingtoolbar.FloatingToolbarLayout
-        style="?attr/floatingToolbarVibrantStyle"
+        style="@style/Widget.Nouto.FloatingToolbar"
         android:id="@+id/floating_toolbar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center|bottom"
-        android:layout_margin="16dp"
+        android:layout_margin="12dp"
         android:accessibilityTraversalBefore="@id/note_content"
         android:visibility="gone"
         app:layout_behavior="com.google.android.material.behavior.HideViewOnScrollBehavior"
         tools:visibility="visible">
 
-        <LinearLayout
+        <HorizontalScrollView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:orientation="horizontal">
+            android:overScrollMode="never"
+            android:scrollbars="none">
 
-            <com.google.android.material.button.MaterialButton
-                style="?attr/materialIconButtonStyle"
-                android:id="@+id/style_bold"
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:checkable="true"
-                android:contentDescription="@string/bold_style_description"
-                app:icon="@drawable/format_bold_24px" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-            <com.google.android.material.button.MaterialButton
-                style="?attr/materialIconButtonStyle"
-                android:id="@+id/style_italic"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checkable="true"
-                android:contentDescription="@string/italic_style_description"
-                app:icon="@drawable/format_italic_24px" />
+                <com.google.android.material.button.MaterialButton
+                    style="@style/Widget.Nouto.FloatingToolbar.IconButton"
+                    android:id="@+id/action_undo"
+                    android:layout_width="36dp"
+                    android:layout_height="40dp"
+                    android:layout_marginHorizontal="1dp"
+                    android:checkable="false"
+                    android:contentDescription="@string/undo"
+                    app:icon="@drawable/undo_24px" />
 
-            <com.google.android.material.button.MaterialButton
-                style="?attr/materialIconButtonStyle"
-                android:id="@+id/style_underline"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:checkable="true"
-                android:contentDescription="@string/underline_style_description"
-                app:icon="@drawable/format_underlined_24px" />
-        </LinearLayout>
+                <com.google.android.material.button.MaterialButton
+                    style="@style/Widget.Nouto.FloatingToolbar.IconButton"
+                    android:id="@+id/action_redo"
+                    android:layout_width="36dp"
+                    android:layout_height="40dp"
+                    android:layout_marginHorizontal="1dp"
+                    android:checkable="false"
+                    android:contentDescription="@string/redo"
+                    app:icon="@drawable/redo_24px" />
+
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="20dp"
+                    android:layout_marginHorizontal="3dp"
+                    android:alpha="0.22"
+                    android:background="@drawable/bg_toolbar_divider" />
+
+                <com.google.android.material.button.MaterialButton
+                    style="@style/Widget.Nouto.FloatingToolbar.IconButton"
+                    android:id="@+id/style_bold"
+                    android:layout_width="36dp"
+                    android:layout_height="40dp"
+                    android:layout_marginHorizontal="1dp"
+                    android:checkable="true"
+                    android:contentDescription="@string/bold_style_description"
+                    app:icon="@drawable/format_bold_24px" />
+
+                <com.google.android.material.button.MaterialButton
+                    style="@style/Widget.Nouto.FloatingToolbar.IconButton"
+                    android:id="@+id/style_italic"
+                    android:layout_width="36dp"
+                    android:layout_height="40dp"
+                    android:layout_marginHorizontal="1dp"
+                    android:checkable="true"
+                    android:contentDescription="@string/italic_style_description"
+                    app:icon="@drawable/format_italic_24px" />
+
+                <com.google.android.material.button.MaterialButton
+                    style="@style/Widget.Nouto.FloatingToolbar.IconButton"
+                    android:id="@+id/style_underline"
+                    android:layout_width="36dp"
+                    android:layout_height="40dp"
+                    android:layout_marginHorizontal="1dp"
+                    android:checkable="true"
+                    android:contentDescription="@string/underline_style_description"
+                    app:icon="@drawable/format_underlined_24px" />
+
+                <com.google.android.material.button.MaterialButton
+                    style="@style/Widget.Nouto.FloatingToolbar.IconButton"
+                    android:id="@+id/style_strikethrough"
+                    android:layout_width="36dp"
+                    android:layout_height="40dp"
+                    android:layout_marginHorizontal="1dp"
+                    android:checkable="true"
+                    android:contentDescription="@string/strikethrough_style_description"
+                    app:icon="@drawable/format_strikethrough_24px" />
+
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="20dp"
+                    android:layout_marginHorizontal="3dp"
+                    android:alpha="0.22"
+                    android:background="@drawable/bg_toolbar_divider" />
+
+                <com.google.android.material.button.MaterialButton
+                    style="@style/Widget.Nouto.FloatingToolbar.IconButton"
+                    android:id="@+id/style_bullet_list"
+                    android:layout_width="36dp"
+                    android:layout_height="40dp"
+                    android:layout_marginHorizontal="1dp"
+                    android:checkable="true"
+                    android:contentDescription="@string/bullet_list_style_description"
+                    app:icon="@drawable/format_list_bulleted_24px" />
+
+                <com.google.android.material.button.MaterialButton
+                    style="@style/Widget.Nouto.FloatingToolbar.IconButton"
+                    android:id="@+id/style_numbered_list"
+                    android:layout_width="36dp"
+                    android:layout_height="40dp"
+                    android:layout_marginHorizontal="1dp"
+                    android:checkable="true"
+                    android:contentDescription="@string/numbered_list_style_description"
+                    app:icon="@drawable/format_list_numbered_24px" />
+            </LinearLayout>
+        </HorizontalScrollView>
     </com.google.android.material.floatingtoolbar.FloatingToolbarLayout>
 
     <com.google.android.material.button.MaterialButtonGroup

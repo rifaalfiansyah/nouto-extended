@@ -1,19 +1,19 @@
 package org.kaorun.nouto.viewmodel
 
 import android.app.Application
-import androidx.core.text.HtmlCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.map
 import androidx.lifecycle.switchMap
 import androidx.lifecycle.viewModelScope
-import org.kaorun.nouto.data.Note
-import org.kaorun.nouto.repository.NoteRepository
 import kotlinx.coroutines.launch
+import org.kaorun.nouto.data.Note
 import org.kaorun.nouto.data.NoteDatabase
+import org.kaorun.nouto.repository.NoteRepository
 import org.kaorun.nouto.repository.PreferenceRepository
 import org.kaorun.nouto.ui.model.LayoutMode
+import org.kaorun.nouto.ui.utils.toPlainText
 
 class NotesViewModel(application: Application) : AndroidViewModel(application) {
     private val noteRepository: NoteRepository
@@ -64,18 +64,19 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
         title: String?,
         content: String?,
         time: Long = System.currentTimeMillis(),
-        isPinned: Boolean = false
+        isPinned: Boolean = false,
+        onInserted: ((Note) -> Unit)? = null
     ) {
         if (title.isNullOrBlank() && content.isNullOrBlank()) return
         viewModelScope.launch {
-            noteRepository.insert(
-                Note(
-                    title = title,
-                    content = content,
-                    time = time,
-                    isPinned = isPinned
-                )
+            val newNote = Note(
+                title = title,
+                content = content,
+                time = time,
+                isPinned = isPinned
             )
+            val id = noteRepository.insert(newNote).toInt()
+            onInserted?.invoke(newNote.copy(id = id))
         }
     }
 
@@ -119,7 +120,4 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
     fun clearPendingDelete() {
         _pendingDelete.value = null
     }
-
-    private fun String?.toPlainText(): String =
-        HtmlCompat.fromHtml(this.orEmpty(), HtmlCompat.FROM_HTML_MODE_COMPACT).toString().trim()
 }

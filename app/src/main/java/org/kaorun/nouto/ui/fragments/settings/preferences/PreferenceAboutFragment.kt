@@ -11,7 +11,6 @@ import org.kaorun.nouto.ui.fragments.base.PreferenceBaseFragment
 class PreferenceAboutFragment : PreferenceBaseFragment() {
     companion object {
         const val VERSION_NAME = BuildConfig.VERSION_NAME
-        const val VERSION_CODE = BuildConfig.VERSION_CODE
     }
     override fun onCreatePreferences(
         savedInstanceState: Bundle?,
@@ -24,12 +23,12 @@ class PreferenceAboutFragment : PreferenceBaseFragment() {
             true
         }
 
-        findPreference<Preference>("contact_developer")?.setOnPreferenceClickListener {
-            openUrl(R.string.telegram_link)
+        findPreference<Preference>("original_project")?.setOnPreferenceClickListener {
+            openUrl(R.string.original_repository_link)
             true
         }
 
-        findPreference<Preference>("version")?.summary = "$VERSION_NAME ($VERSION_CODE)"
+        findPreference<Preference>("version")?.summary = "v$VERSION_NAME"
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

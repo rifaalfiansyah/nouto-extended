@@ -8,13 +8,7 @@ object ThemeHelper {
     const val KEY = "theme"
 
     fun apply(context: Context) {
-        AppCompatDelegate.setDefaultNightMode(
-            when (PreferenceManager.getDefaultSharedPreferences(context).getString(KEY, "system")) {
-                "light" -> AppCompatDelegate.MODE_NIGHT_NO
-                "dark" -> AppCompatDelegate.MODE_NIGHT_YES
-                else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
-            }
-        )
+        apply(PreferenceManager.getDefaultSharedPreferences(context).getString(KEY, "system"))
     }
 
     fun apply(value: Any?) {

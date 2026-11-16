@@ -6,7 +6,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.text.HtmlCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.navGraphViewModels
@@ -19,13 +18,14 @@ import org.kaorun.nouto.ui.fragments.base.BaseFragment
 import org.kaorun.nouto.ui.utils.FileUtils
 import org.kaorun.nouto.ui.utils.InsetsHandler
 import org.kaorun.nouto.ui.utils.MarginItemDecoration
+import org.kaorun.nouto.ui.utils.toPlainText
 import org.kaorun.nouto.viewmodel.NotesViewModel
 
-class SettingsNoteExportFragment: BaseFragment(R.layout.fragment_note_export) {
+class SettingsNoteExportFragment : BaseFragment(R.layout.fragment_note_export) {
     private var _binding: FragmentNoteExportBinding? = null
+    private val binding get() = _binding!!
     private lateinit var noteExportAdapter: NoteExportAdapter
     private val viewModel: NotesViewModel by navGraphViewModels(R.id.nav_graph)
-    private val binding get() = _binding!!
 
     private var title: String? = null
     private var content: String? = null
@@ -71,8 +71,8 @@ class SettingsNoteExportFragment: BaseFragment(R.layout.fragment_note_export) {
     private fun observeNotes() {
         viewModel.displayedNotes.observe(viewLifecycleOwner) { notes ->
             noteExportAdapter.submitList(notes.toList()) {
-                binding.recyclerView.post {
-                    binding.recyclerView.invalidateItemDecorations()
+                _binding?.recyclerView?.post {
+                    _binding?.recyclerView?.invalidateItemDecorations()
                 }
             }
         }
@@ -91,25 +91,21 @@ class SettingsNoteExportFragment: BaseFragment(R.layout.fragment_note_export) {
                     else -> "note.json"
                 }
                 filePicker.launch(defaultFileName)
-            },
+            }
         )
-        binding.recyclerView.adapter = noteExportAdapter
-        repeat(binding.recyclerView.itemDecorationCount) {
-            binding.recyclerView.removeItemDecorationAt(0)
-        }
-
-        binding.recyclerView.addItemDecoration(
-            MarginItemDecoration(
-                outerSpaceSize = resources.getDimensionPixelSize(
-                    R.dimen.recycler_view_outer_margin
-                ),
-                innerSpaceSize = resources.getDimensionPixelSize(
-                    R.dimen.recycler_view_inner_margin
-                ),
-                spanCount = 1
+        binding.recyclerView.apply {
+            adapter = noteExportAdapter
+            repeat(itemDecorationCount) {
+                removeItemDecorationAt(0)
+            }
+            addItemDecoration(
+                MarginItemDecoration(
+                    outerSpaceSize = resources.getDimensionPixelSize(R.dimen.recycler_view_outer_margin),
+                    innerSpaceSize = resources.getDimensionPixelSize(R.dimen.recycler_view_inner_margin),
+                    spanCount = 1
+                )
             )
-        )
-
+        }
     }
 
     private fun setupInsets() {
@@ -121,12 +117,9 @@ class SettingsNoteExportFragment: BaseFragment(R.layout.fragment_note_export) {
         InsetsHandler.applyViewInsets(binding.recyclerView, false)
     }
 
-    private fun setupExportSnackbar(e: String? = null) {
-        val message = e?.let {
-            "${getString(R.string.error_occured)}: $e"
-        } ?: run {
-            getString(R.string.export_success)
-        }
+    private fun setupExportSnackbar(errorMessage: String? = null) {
+        val message = errorMessage?.let { "${getString(R.string.error_occured)}: $it" }
+            ?: getString(R.string.export_success)
         Snackbars.showSnackbarNoAction(
             view = binding.root,
             anchorView = null,
@@ -134,6 +127,8 @@ class SettingsNoteExportFragment: BaseFragment(R.layout.fragment_note_export) {
         )
     }
 
-    private fun String?.toPlainText() =
-        HtmlCompat.fromHtml(this.orEmpty(), HtmlCompat.FROM_HTML_MODE_COMPACT).toString().trim()
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
 }

@@ -1,17 +1,28 @@
 package org.kaorun.nouto.ui.fragments
 
+import android.animation.ValueAnimator
+import android.annotation.SuppressLint
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.Editable
-import android.text.Html
+import android.text.TextUtils
 import android.text.TextWatcher
 import android.view.ContextThemeWrapper
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.ViewGroup
+import android.view.animation.AnimationUtils
+import android.view.animation.OvershootInterpolator
+import android.widget.LinearLayout
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.PopupMenu
+import androidx.coordinatorlayout.widget.CoordinatorLayout
+import androidx.core.animation.doOnEnd
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -22,13 +33,14 @@ import androidx.navigation.fragment.navArgs
 import androidx.navigation.navGraphViewModels
 import androidx.preference.PreferenceManager
 import androidx.transition.TransitionManager
-import com.google.android.material.transition.MaterialFade
+import com.google.android.material.behavior.HideViewOnScrollBehavior
 import com.onegravity.rteditor.RTManager
 import com.onegravity.rteditor.api.RTApi
 import com.onegravity.rteditor.api.RTMediaFactoryImpl
 import com.onegravity.rteditor.api.RTProxyImpl
 import com.onegravity.rteditor.api.format.RTFormat
 import kotlinx.coroutines.launch
+import kotlin.math.hypot
 import org.kaorun.nouto.R
 import org.kaorun.nouto.data.Note
 import org.kaorun.nouto.databinding.FragmentNoteBinding
@@ -36,8 +48,11 @@ import org.kaorun.nouto.ui.components.DeleteDialog
 import org.kaorun.nouto.ui.components.Snackbars
 import org.kaorun.nouto.ui.components.TextStyleFloatingToolbar
 import org.kaorun.nouto.ui.fragments.base.BaseFragment
+import org.kaorun.nouto.ui.utils.DateFormatUtils
 import org.kaorun.nouto.ui.utils.FileUtils
 import org.kaorun.nouto.ui.utils.InsetsHandler
+import org.kaorun.nouto.ui.utils.toPlainText
+import org.kaorun.nouto.ui.utils.trimHtml
 import org.kaorun.nouto.data.PreferenceAppearanceKeys
 import org.kaorun.nouto.viewmodel.NotesViewModel
 
@@ -50,11 +65,23 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
     private val filePicker = setupFilePicker()
     private var note: Note? = null
     private var isDeleting = false
-    private var isSaved = false
     private var isRestoring = false
     private var isPinned = false
     private var isImporting = false
     private var isTitleVisible = true
+    private var isInitializingNote = false
+    private var isInsertingNote = false
+    private var savedTitleHtml: String = ""
+    private var savedContentHtml: String = ""
+    private var currentNoteTime: Long = System.currentTimeMillis()
+    private var metadataAnimator: ValueAnimator? = null
+    private val metadataHoldHandler = Handler(Looper.getMainLooper())
+    private val autoSaveHandler = Handler(Looper.getMainLooper())
+    private val autoSaveRunnable = Runnable {
+        if (!isDeleting && !isImporting && _binding != null) {
+            saveNote()
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -94,27 +121,61 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
                 .getBoolean(PreferenceAppearanceKeys.IS_VIEW_ONLY_MODE, false)
 
             viewModel.getNote(noteId).observe(viewLifecycleOwner) { existingNote ->
-                existingNote?.let {
+                val it = existingNote ?: return@observe
+                if (note == null) {
+                    isInitializingNote = true
                     note = it
                     isPinned = it.isPinned
+                    currentNoteTime = it.time
 
+                    rtManager.unregisterEditor(binding.noteTitle)
+                    rtManager.unregisterEditor(binding.noteContent)
                     binding.noteTitle.setRichTextEditing(true, it.title)
                     binding.noteContent.setRichTextEditing(true, it.content)
+                    rtManager.registerEditor(binding.noteTitle, true)
+                    rtManager.registerEditor(binding.noteContent, true)
                     binding.noteTitle.setSelection(binding.noteTitle.text?.length ?: 0)
                     binding.noteContent.setSelection(binding.noteContent.text?.length ?: 0)
 
+                    savedTitleHtml = getNormalizedHtml(binding.noteTitle.getText(RTFormat.HTML))
+                    savedContentHtml = getNormalizedHtml(binding.noteContent.getText(RTFormat.HTML))
+
+                    isInitializingNote = false
+                    updateMetadata()
                     updateUIState(note, !isRestoring, isInViewOnlyMode)
+                } else {
+                    note = it
+                    isPinned = it.isPinned
+                    currentNoteTime = it.time
+                    updateMetadata()
+                    if (isRestoring) {
+                        updateUIState(note, false, isInViewOnlyMode)
+                    }
                 }
             }
         } else {
+            isInitializingNote = true
+            currentNoteTime = System.currentTimeMillis()
             if (args.title != null || args.content != null) {
                 isImporting = true
+                rtManager.unregisterEditor(binding.noteTitle)
+                rtManager.unregisterEditor(binding.noteContent)
                 binding.noteTitle.setRichTextEditing(true, args.title)
                 binding.noteContent.setRichTextEditing(true, args.content)
+                rtManager.registerEditor(binding.noteTitle, true)
+                rtManager.registerEditor(binding.noteContent, true)
+                savedTitleHtml = getNormalizedHtml(binding.noteTitle.getText(RTFormat.HTML))
+                savedContentHtml = getNormalizedHtml(binding.noteContent.getText(RTFormat.HTML))
+                isInitializingNote = false
+                updateMetadata()
                 updateUIState(null, false)
             } else {
                 binding.noteTitle.setRichTextEditing(true, null)
                 binding.noteContent.setRichTextEditing(true, null)
+                savedTitleHtml = getNormalizedHtml(binding.noteTitle.getText(RTFormat.HTML))
+                savedContentHtml = getNormalizedHtml(binding.noteContent.getText(RTFormat.HTML))
+                isInitializingNote = false
+                updateMetadata()
                 updateUIState(null, true)
             }
         }
@@ -122,17 +183,28 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
 
     private fun setupToolbar() {
         val textStyleFloatingToolbar = TextStyleFloatingToolbar(
-            rtManager,
-            binding.styleBold,
-            binding.styleItalic,
-            binding.styleUnderline,
-            listOf(binding.noteTitle, binding.noteContent)
+            rtManager = rtManager,
+            actionUndo = binding.actionUndo,
+            actionRedo = binding.actionRedo,
+            styleBold = binding.styleBold,
+            styleItalic = binding.styleItalic,
+            styleUnderline = binding.styleUnderline,
+            styleStrikethrough = binding.styleStrikethrough,
+            styleBulletList = binding.styleBulletList,
+            styleNumberedList = binding.styleNumberedList,
+            fields = listOf(binding.noteTitle, binding.noteContent),
+            onFormatChanged = {
+                _binding?.root?.post {
+                    onEditorChanged()
+                }
+            }
         )
         textStyleFloatingToolbar.setupFloatingToolbar()
     }
 
     private fun setupListeners() {
         setupChangeListener()
+        setupMetadataListeners()
 
         binding.scrollView.setOnScrollChangeListener { _, _, scrollY, _, oldScrollY ->
             with(binding.buttonEditNote) {
@@ -140,14 +212,29 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
                 if (!isExtended && scrollY < oldScrollY) extend()
                 if (scrollY == 0) extend()
             }
+            if (scrollY < oldScrollY || scrollY == 0) {
+                slideInFloatingToolbar()
+            }
+        }
+
+        listOf(binding.noteTitle, binding.noteContent).forEach { editor ->
+            editor.setOnClickListener {
+                slideInFloatingToolbar()
+            }
+            editor.setOnFocusChangeListener { _, hasFocus ->
+                if (hasFocus) {
+                    slideInFloatingToolbar()
+                }
+            }
         }
 
         binding.buttonEditNote.setOnClickListener {
-            updateUIState(note, isShowKeyboard = true, isInViewOnlyMode = false)
-        }
-
-        binding.buttonSave.setOnClickListener {
-            closeNoteFragment()
+            updateUIState(
+                note = note,
+                isShowKeyboard = true,
+                isInViewOnlyMode = false,
+                animateEditTransition = true
+            )
         }
 
         binding.topAppBar.setNavigationOnClickListener {
@@ -155,18 +242,20 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
         }
 
         binding.buttonDeletePermanently.setOnClickListener {
+            val currentNote = note ?: return@setOnClickListener
             DeleteDialog.show(requireContext(), resources) {
                 isDeleting = true
-                viewModel.deleteNote(note!!)
+                viewModel.deleteNote(currentNote)
                 closeNoteFragment()
             }
         }
 
         binding.buttonRestore.setOnClickListener {
+            val currentNote = note ?: return@setOnClickListener
             isRestoring = true
-            binding.floatingToolbar.isVisible = true
-            viewModel.unmarkDeleted(note!!)
-            setupRestoreSnackbar(note!!)
+            showFloatingToolbar()
+            viewModel.unmarkDeleted(currentNote)
+            setupRestoreSnackbar(currentNote)
         }
 
         binding.buttonBack.setOnClickListener {
@@ -200,6 +289,7 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
                     R.id.pin -> {
                         setupPinSnackbar()
                         isPinned = !isPinned
+                        saveNote()
                         true
                     }
                     R.id.export -> {
@@ -249,6 +339,7 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
             message = getString(messageRes),
             undoAction = {
                 isPinned = !isPinned
+                saveNote()
             }
         )
     }
@@ -275,32 +366,62 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
         )
     }
 
-    private fun setupChangeListener() {
-        val isChanged = {
-            (binding.noteTitle.getText(RTFormat.HTML).orEmpty() != (note?.title ?: "") &&
-                    binding.noteTitle.getText(RTFormat.HTML).toPlainText().isNotEmpty()) ||
-                    (binding.noteContent.getText(RTFormat.HTML).orEmpty() != (note?.content ?: "") &&
-                            binding.noteContent.getText(RTFormat.HTML).toPlainText().isNotEmpty())
-        }
+    private fun getNormalizedHtml(html: String?): String {
+        val raw = html.orEmpty()
+        return if (raw.toPlainText().isBlank()) "" else raw.trimHtml()
+    }
 
+    private fun hasUnsavedChanges(): Boolean {
+        val currentTitle = getNormalizedHtml(binding.noteTitle.getText(RTFormat.HTML))
+        val currentContent = getNormalizedHtml(binding.noteContent.getText(RTFormat.HTML))
+        if (note == null && currentTitle.isEmpty() && currentContent.isEmpty()) return false
+        return currentTitle != savedTitleHtml || currentContent != savedContentHtml
+    }
+
+    private fun updateMetadata() {
+        val b = _binding ?: return
+        b.noteTime.text = DateFormatUtils.formatNoteTime(requireContext(), currentNoteTime)
+        val plainContent = b.noteContent.getText(RTFormat.HTML).orEmpty().toPlainText()
+        val wordCount = if (plainContent.isBlank()) 0 else plainContent.split(Regex("\\s+")).size
+        val charCount = plainContent.length
+        b.noteWords.text = getString(R.string.note_words_count, wordCount)
+        b.noteCharacters.text = getString(R.string.note_characters_count, charCount)
+    }
+
+    private fun scheduleAutoSave() {
+        autoSaveHandler.removeCallbacks(autoSaveRunnable)
+        autoSaveHandler.postDelayed(autoSaveRunnable, 500L)
+    }
+
+    private fun onEditorChanged() {
+        if (!isInitializingNote && _binding != null && !isImporting) {
+            updateMetadata()
+            if (hasUnsavedChanges()) {
+                scheduleAutoSave()
+            }
+        }
+    }
+
+    private fun setupChangeListener() {
         val watcher = object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
-                val isChanged = {
-                    val title = binding.noteTitle.getText(RTFormat.HTML)
-                    val content = binding.noteContent.getText(RTFormat.HTML)
-                    (title != (note?.title ?: "") && title.toPlainText().isNotEmpty()) ||
-                            (content != (note?.content ?: "") && content.toPlainText().isNotEmpty())
-                }
-                setButtonVisible(isChanged())
+                onEditorChanged()
             }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         }
 
-        listOf(binding.styleBold, binding.styleItalic, binding.styleUnderline).forEach {
+        listOf(
+            binding.styleBold,
+            binding.styleItalic,
+            binding.styleUnderline,
+            binding.styleStrikethrough,
+            binding.styleBulletList,
+            binding.styleNumberedList
+        ).forEach {
             it.addOnCheckedChangeListener { _, _ ->
                 binding.root.post {
-                    setButtonVisible(isChanged())
+                    onEditorChanged()
                 }
             }
         }
@@ -310,12 +431,180 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
         }
     }
 
-    private fun setButtonVisible(isChanged: Boolean) {
-        val fade = MaterialFade().apply {
-            duration = if (isChanged) 150L else 84L
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupMetadataListeners() {
+        val metadataButtons = listOf(
+            binding.noteTime,
+            binding.noteWords,
+            binding.noteCharacters
+        )
+        val bouncyInterpolator = OvershootInterpolator(1.2f)
+        val density = resources.displayMetrics.density
+        val basePaddingPx = (8 * density).toInt()
+        val outerRadiusPx = 24f * density
+        val innerRadiusPx = 6f * density
+        val gapPx = resources.getDimensionPixelSize(R.dimen.recycler_view_segmented_list_margin)
+        val currentWeights = FloatArray(metadataButtons.size) { 1f }
+        var currentActiveButton: View? = null
+
+        fun updateButtonAppearance(bounceFactor: Float = 1f) {
+            metadataButtons.forEachIndexed { i, button ->
+                val w = currentWeights[i].coerceIn(0f, 1f)
+                if (w <= 0.005f && button != currentActiveButton && currentActiveButton != null) {
+                    button.visibility = View.GONE
+                    button.scaleX = 1f
+                    button.scaleY = 1f
+                } else {
+                    button.visibility = View.VISIBLE
+                    (button.layoutParams as? LinearLayout.LayoutParams)?.let { lp ->
+                        lp.weight = w.coerceAtLeast(0.001f)
+                        lp.marginStart = if (i == 0) 0 else (gapPx * minOf(w, currentWeights[i - 1].coerceIn(0f, 1f))).toInt()
+                    }
+                    val pad = (basePaddingPx * w).toInt()
+                    if (button.paddingLeft != pad) {
+                        button.setPadding(pad, button.paddingTop, pad, button.paddingBottom)
+                    }
+
+                    if (currentActiveButton != null && button != currentActiveButton) {
+                        button.scaleX = 1f
+                        button.scaleY = 1f
+                        button.alpha = (w / 0.10f).coerceIn(0f, 1f)
+                    } else {
+                        button.scaleX = bounceFactor
+                        button.scaleY = bounceFactor
+                        button.alpha = (w / 0.10f).coerceIn(0f, 1f)
+                    }
+
+                    val leftNeighborFactor = if (i == 0) 0f else currentWeights[i - 1].coerceIn(0f, 1f)
+                    val rightNeighborFactor = if (i == metadataButtons.lastIndex) 0f else currentWeights[i + 1].coerceIn(0f, 1f)
+                    val leftRadius = outerRadiusPx - (outerRadiusPx - innerRadiusPx) * leftNeighborFactor
+                    val rightRadius = outerRadiusPx - (outerRadiusPx - innerRadiusPx) * rightNeighborFactor
+
+                    button.shapeAppearanceModel = button.shapeAppearanceModel.toBuilder()
+                        .setTopLeftCornerSize(leftRadius)
+                        .setBottomLeftCornerSize(leftRadius)
+                        .setTopRightCornerSize(rightRadius)
+                        .setBottomRightCornerSize(rightRadius)
+                        .build()
+                }
+            }
         }
-        TransitionManager.beginDelayedTransition(binding.root, fade)
-        binding.buttonSave.visibility = if (isChanged) View.VISIBLE else View.INVISIBLE
+
+        updateButtonAppearance()
+
+        fun animateMetadataState(activeButton: View?, durationMs: Long = 700L) {
+            val container = _binding?.noteMetadataContainer ?: return
+            metadataAnimator?.cancel()
+            currentActiveButton = activeButton
+
+            val startWeights = currentWeights.copyOf()
+            val targetWeights = FloatArray(metadataButtons.size) { i ->
+                if (activeButton == null || metadataButtons[i] == activeButton) 1f else 0f
+            }
+
+            metadataButtons.forEachIndexed { i, button ->
+                button.ellipsize = null
+                if (targetWeights[i] > 0f) {
+                    button.visibility = View.VISIBLE
+                }
+            }
+
+            metadataAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = durationMs
+                interpolator = bouncyInterpolator
+                addUpdateListener { animator ->
+                    val fraction = animator.animatedValue as Float
+                    val clampedFraction = fraction.coerceIn(0f, 1f)
+                    for (i in metadataButtons.indices) {
+                        currentWeights[i] =
+                            startWeights[i] + (targetWeights[i] - startWeights[i]) * clampedFraction
+                    }
+                    val overshoot = fraction - clampedFraction
+                    val bounceScale = 0.94f + 0.06f * clampedFraction + overshoot * 0.35f
+                    updateButtonAppearance(bounceScale)
+                    container.requestLayout()
+                }
+                doOnEnd {
+                    metadataButtons.forEach { it.ellipsize = TextUtils.TruncateAt.END }
+                }
+                start()
+            }
+        }
+
+        val touchSlop = ViewConfiguration.get(requireContext()).scaledTouchSlop
+        val holdThresholdMs = 150L
+        var downX = 0f
+        var downY = 0f
+        var isHoldTriggered = false
+        var isMovedOut = false
+        var pendingHoldRunnable: Runnable? = null
+
+        fun cancelPendingHold() {
+            pendingHoldRunnable?.let { metadataHoldHandler.removeCallbacks(it) }
+            pendingHoldRunnable = null
+        }
+
+        metadataButtons.forEach { button ->
+            button.setOnTouchListener { v, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        cancelPendingHold()
+                        downX = event.x
+                        downY = event.y
+                        isHoldTriggered = false
+                        isMovedOut = false
+                        v.parent?.requestDisallowInterceptTouchEvent(true)
+                        v.isPressed = true
+
+                        val holdRunnable = Runnable {
+                            isHoldTriggered = true
+                            if (currentActiveButton != v) {
+                                animateMetadataState(v)
+                            }
+                        }
+                        pendingHoldRunnable = holdRunnable
+                        metadataHoldHandler.postDelayed(holdRunnable, holdThresholdMs)
+                        true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        if (!isHoldTriggered && !isMovedOut &&
+                            hypot(event.x - downX, event.y - downY) > touchSlop
+                        ) {
+                            isMovedOut = true
+                            cancelPendingHold()
+                            v.isPressed = false
+                            v.parent?.requestDisallowInterceptTouchEvent(false)
+                        }
+                        true
+                    }
+                    MotionEvent.ACTION_UP -> {
+                        cancelPendingHold()
+                        v.parent?.requestDisallowInterceptTouchEvent(false)
+                        v.isPressed = false
+                        if (isHoldTriggered) {
+                            animateMetadataState(null)
+                        } else if (!isMovedOut) {
+                            v.performClick()
+                            animateMetadataState(
+                                activeButton = if (currentActiveButton == v) null else v,
+                                durationMs = 420L
+                            )
+                        }
+                        true
+                    }
+                    MotionEvent.ACTION_CANCEL -> {
+                        cancelPendingHold()
+                        v.parent?.requestDisallowInterceptTouchEvent(false)
+                        v.isPressed = false
+                        if (isHoldTriggered) {
+                            animateMetadataState(null)
+                        }
+                        true
+                    }
+                    else -> false
+                }
+            }
+        }
     }
 
     private fun setupInsets() {
@@ -364,10 +653,48 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
         )
     }
 
+    private fun slideInFloatingToolbar() {
+        val toolbar = _binding?.floatingToolbar ?: return
+        if (!toolbar.isVisible) return
+        val behavior = (toolbar.layoutParams as? CoordinatorLayout.LayoutParams)?.behavior
+            as? HideViewOnScrollBehavior<*>
+        @Suppress("UNCHECKED_CAST")
+        (behavior as? HideViewOnScrollBehavior<View>)?.slideIn(toolbar)
+    }
+
+    @SuppressLint("PrivateResource")
+    private fun showFloatingToolbar() {
+        val toolbar = _binding?.floatingToolbar ?: return
+        slideInFloatingToolbar()
+        if (toolbar.isVisible && toolbar.alpha == 1f && toolbar.translationY == 0f) return
+
+        toolbar.animate().cancel()
+        val slideOffset = 48f * resources.displayMetrics.density
+        toolbar.alpha = 0f
+        toolbar.translationY = slideOffset
+        toolbar.isVisible = true
+        toolbar.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(
+                resources.getInteger(
+                    com.google.android.material.R.integer.m3_sys_motion_duration_medium4
+                ).toLong()
+            )
+            .setInterpolator(
+                AnimationUtils.loadInterpolator(
+                    requireContext(),
+                    com.google.android.material.R.interpolator.m3_sys_motion_easing_emphasized_decelerate
+                )
+            )
+            .start()
+    }
+
     private fun updateUIState(
         note: Note?,
         isShowKeyboard: Boolean,
-        isInViewOnlyMode: Boolean = false
+        isInViewOnlyMode: Boolean = false,
+        animateEditTransition: Boolean = false
     ) {
         val isDeleted = !isDeleting && (note?.isDeleted ?: false)
         val isEditable = !isInViewOnlyMode && !isImporting && !isDeleted
@@ -380,15 +707,21 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
             it.isCursorVisible = isEditable
         }
 
-        binding.buttonEditNote.isVisible = !isDeleted && !isImporting
         binding.buttonMenu.isVisible = !isImporting && !isDeleted
-        binding.floatingToolbar.isVisible = isEditable
         binding.buttonGroupBottom.isVisible = isDeleted && !isImporting
         binding.buttonGroupMenu.isVisible = !isDeleted && !isImporting
 
         if (isEditable) {
-            binding.buttonEditNote.shrink()
-            binding.buttonEditNote.hide()
+            if (animateEditTransition && binding.buttonEditNote.isVisible) {
+                binding.buttonEditNote.hide()
+            } else {
+                binding.buttonEditNote.isVisible = false
+            }
+            showFloatingToolbar()
+        } else {
+            binding.buttonEditNote.isVisible = !isDeleted && !isImporting
+            binding.floatingToolbar.animate().cancel()
+            binding.floatingToolbar.isVisible = false
         }
 
         isTitleVisible = PreferenceManager
@@ -397,7 +730,6 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
 
         if (!isTitleVisible) {
             binding.noteTitle.isVisible = false
-            binding.titleDivider.isVisible = false
             binding.noteContentSpacing.isVisible = true
         }
 
@@ -430,21 +762,44 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
         }
     }
     private fun saveNote() {
-        val htmlTitle = binding.noteTitle.getText(RTFormat.HTML)
-        val htmlContent = binding.noteContent.getText(RTFormat.HTML)
-        val title = if (htmlTitle.toPlainText().isBlank()) "" else htmlTitle.trimHtml()
-        val content = if (htmlContent.toPlainText().isBlank()) "" else htmlContent.trimHtml()
+        val title = getNormalizedHtml(binding.noteTitle.getText(RTFormat.HTML))
+        val content = getNormalizedHtml(binding.noteContent.getText(RTFormat.HTML))
         val time = System.currentTimeMillis()
 
-        note?.let {
-            if (note!!.title != htmlTitle || note!!.content != htmlContent || it.isPinned != isPinned) {
-                viewModel.updateNote(
-                    note!!.copy(title = title, content = content, time = time, isPinned = isPinned)
+        note?.let { existing ->
+            if (title != savedTitleHtml || content != savedContentHtml || existing.isPinned != isPinned) {
+                val updated = existing.copy(
+                    title = title,
+                    content = content,
+                    time = time,
+                    isPinned = isPinned
                 )
+                note = updated
+                savedTitleHtml = title
+                savedContentHtml = content
+                currentNoteTime = time
+                updateMetadata()
+                viewModel.updateNote(updated)
             }
         } ?: run {
-            if (htmlTitle.toPlainText().isNotBlank() || htmlContent.toPlainText().isNotBlank()) {
-                viewModel.addNote(title = title, content = content, time = time, isPinned = isPinned)
+            if (!isInsertingNote && (title.isNotEmpty() || content.isNotEmpty())) {
+                isInsertingNote = true
+                savedTitleHtml = title
+                savedContentHtml = content
+                currentNoteTime = time
+                updateMetadata()
+                viewModel.addNote(
+                    title = title,
+                    content = content,
+                    time = time,
+                    isPinned = isPinned
+                ) { insertedNote ->
+                    isInsertingNote = false
+                    note = insertedNote
+                    if (_binding != null && !isDeleting && !isImporting && hasUnsavedChanges()) {
+                        saveNote()
+                    }
+                }
             }
         }
     }
@@ -468,8 +823,8 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri: Uri? ->
         uri?.let {
+            autoSaveHandler.removeCallbacks(autoSaveRunnable)
             saveNote()
-            isSaved = true
 
             val title = binding.noteTitle.getText(RTFormat.HTML).orEmpty()
             val content = binding.noteContent.getText(RTFormat.HTML).orEmpty()
@@ -492,10 +847,10 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
     private fun exportNote() {
         val title = binding.noteTitle.getText(RTFormat.HTML).toPlainText()
         val content = binding.noteContent.getText(RTFormat.HTML).toPlainText()
-        val defaultFileName = if (title.isNotBlank()) {
-            "${title.take(20)}.json"
-        } else {
-            "${content.take(20)}.json"
+        val defaultFileName = when {
+            title.isNotBlank() -> "${title.take(20)}.json"
+            content.isNotBlank() -> "${content.take(20)}.json"
+            else -> "note.json"
         }
 
         filePicker.launch(defaultFileName)
@@ -506,15 +861,11 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
         findNavController().popBackStack()
     }
 
-    private fun String.trimHtml() = replace(Regex("(<br\\s*/?>|\\s)+$"), "").trim()
-
-    private fun String.toPlainText() = Html.fromHtml(this, Html.FROM_HTML_MODE_COMPACT).toString().trim()
-
     override fun onStop() {
         super.onStop()
-        if (!isDeleting && !isImporting && !isSaved) {
+        autoSaveHandler.removeCallbacks(autoSaveRunnable)
+        if (!isDeleting && !isImporting && (hasUnsavedChanges() || (note != null && note?.isPinned != isPinned))) {
             saveNote()
-            isSaved = true
         }
     }
 
@@ -525,6 +876,11 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        autoSaveHandler.removeCallbacksAndMessages(null)
+        metadataHoldHandler.removeCallbacksAndMessages(null)
+        metadataAnimator?.cancel()
+        metadataAnimator = null
+        binding.floatingToolbar.animate().cancel()
         rtManager.onDestroy(requireActivity().isFinishing)
         _binding = null
     }

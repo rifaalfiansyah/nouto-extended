@@ -12,7 +12,7 @@ class NoteRepository(private val noteDao: NoteDao) {
 
     fun searchNotes(query: String): LiveData<List<Note>> = noteDao.searchNotes(query)
 
-    suspend fun insert(note: Note) = noteDao.insert(note)
+    suspend fun insert(note: Note): Long = noteDao.insert(note)
 
     suspend fun update(note: Note) = noteDao.update(note)
 

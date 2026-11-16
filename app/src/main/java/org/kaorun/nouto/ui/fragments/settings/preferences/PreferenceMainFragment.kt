@@ -28,13 +28,6 @@ class PreferenceMainFragment : PreferenceBaseFragment() {
             true
         }
 
-        findPreference<Preference>("screen_language")?.setOnPreferenceClickListener {
-            TransitionManager.endTransitions(parentView)
-           requireParentFragment().findNavController()
-               .navigate(R.id.action_settingsMainFragment_to_settingsLanguageFragment)
-            true
-        }
-
         findPreference<Preference>("screen_about")?.setOnPreferenceClickListener {
             TransitionManager.endTransitions(parentView)
             requireParentFragment().findNavController()

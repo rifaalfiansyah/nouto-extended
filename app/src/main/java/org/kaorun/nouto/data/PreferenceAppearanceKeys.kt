@@ -1,4 +1,3 @@
-// org.kaorun.nouto.utils.PrefKeys.kt
 package org.kaorun.nouto.data
 
 import org.kaorun.nouto.ui.utils.BlackThemeHelper

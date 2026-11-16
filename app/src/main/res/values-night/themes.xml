@@ -2,6 +2,9 @@
     <style name="Base.Theme.Nouto" parent="Theme.Material3Expressive.Dark.NoActionBar">
     </style>
 
+    <style name="Theme.Nouto.Splash" parent="Theme.Nouto.Default">
+    </style>
+
     <style name="Theme.Nouto" parent="Base.Theme.Nouto">
         <item name="android:fontFamily">@font/google_sans_flex_variable</item>
         <item name="android:windowBackground">?colorSurfaceContainer</item>

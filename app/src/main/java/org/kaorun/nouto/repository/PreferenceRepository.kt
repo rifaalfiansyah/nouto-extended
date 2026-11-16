@@ -16,8 +16,6 @@ class PreferenceRepository(context: Context) {
     }
 
     fun getLayoutMode(): LayoutMode = runCatching {
-        LayoutMode.valueOf(
-            prefs.getString(KEY_LAYOUT_MODE, LayoutMode.LINEAR.name)!!
-        )
+        prefs.getString(KEY_LAYOUT_MODE, null)?.let(LayoutMode::valueOf) ?: LayoutMode.LINEAR
     }.getOrDefault(LayoutMode.LINEAR)
 }

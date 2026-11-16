@@ -9,14 +9,14 @@
         android:summary="@string/source_code_summary" />
 
     <Preference
-        android:key="contact_developer"
-        android:icon="@drawable/support_agent_24px"
-        android:title="@string/contact_developer"
-        android:summary="@string/contact_developer_summary" />
+        android:key="original_project"
+        android:icon="@drawable/history_24px"
+        android:title="@string/original_project"
+        android:summary="@string/original_project_summary" />
 
     <Preference
         android:key="version"
         android:icon="@drawable/info_24px"
         android:title="@string/version"
-        tools:summary="1.0.0" />
+        tools:summary="v1.0.0" />
 </androidx.preference.PreferenceScreen>

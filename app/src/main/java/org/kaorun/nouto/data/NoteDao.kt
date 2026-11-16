@@ -22,7 +22,7 @@ interface NoteDao {
     fun searchNotes(query: String): LiveData<List<Note>>
 
     @Insert
-    suspend fun insert(note: Note)
+    suspend fun insert(note: Note): Long
 
     @Update
     suspend fun update(note: Note)

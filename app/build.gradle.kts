@@ -12,8 +12,8 @@ android {
         applicationId = "dev.rifaalfiansyah.nouto"
         minSdk = 28
         targetSdk = 37
-        versionCode = 4
-        versionName = "1.3.0"
+        versionCode = 1
+        versionName = "1.0.0"
     }
 
     buildTypes {
