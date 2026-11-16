@@ -1,52 +1,30 @@
 # Nouto Extended
 
-[![Release](https://img.shields.io/github/v/release/HotarunIchijou/Nouto?display_name=tag&style=for-the-badge)](https://github.com/HotarunIchijou/Nouto/releases/latest)
-[![Build](https://img.shields.io/github/actions/workflow/status/HotarunIchijou/nouto/build.yml?branch=master&style=for-the-badge)](https://github.com/HotarunIchijou/Nouto/actions)
-[![License](https://img.shields.io/github/license/HotarunIchijou/Nouto?style=for-the-badge&label=license)](/LICENSE)
+[![Build](https://img.shields.io/github/actions/workflow/status/rifaalfiansyah/nouto-extended/build.yml?branch=master&style=for-the-badge)](https://github.com/rifaalfiansyah/nouto-extended/actions)
+[![License](https://img.shields.io/github/license/rifaalfiansyah/nouto-extended?style=for-the-badge&label=license)](/LICENSE)
 
-
-Nouto Extended is a simple and elegant notes app built in Kotlin with Material 3 Expressive Design. It focuses heavily on user experience — fluid transitions, intuitive gestures, and a clean interface that stays out of your way.
+**Nouto Extended** is an enhanced fork of [Nouto](https://github.com/HotarunIchijou/Nouto) — a simple, offline-first Android notes app built in Kotlin with Material 3 Expressive Design. It focuses heavily on smooth transitions, intuitive gestures, and a clean interface that stays out of your way, with additional stability fixes and performance improvements.
 
 ## ✨ Key features
-* **Material 3 Expressive design:** Sleek and modern UI with dynamic color support and smooth transitions
-* **Swipe to delete with undo:** Delete notes with a swipe and restore them instantly via Snackbar
-* **Trash:** Recover accidentally deleted notes before they're permanently removed
+* **Material 3 Expressive design:** Sleek, modern UI with smooth shared-axis transitions and responsive layouts
+* **Rich text editing:** Format notes with bold, italic, and underline styling using a floating toolbar
+* **Pinning & flexible layouts:** Pin important notes to the top and switch between linear and staggered grid views
+* **Plain-text search & history:** Search notes by actual plain-text content with recent search history
+* **Swipe to delete with undo & Trash:** Delete notes with a swipe, restore instantly via Snackbar, or recover them from Trash
+* **Backup, restore, export & import:** Full Room database backup/restore and single-note JSON export/import
+* **Dynamic color & Pure Black theme:** Supports Android 12+ Material You dynamic colors, light/dark modes, and AMOLED pure black mode
 * **Predictive back gestures:** Full support for Android 14+ predictive back navigation
-* **Dynamic color:** Picks up your wallpaper's color scheme on Android 12+ via Material You
-* **Offline-first:** Everything is stored locally — no account required, no network calls
+* **Offline-first:** Everything is stored locally on your device — no account required, no network calls
 
-## ⬇️ Downloads
-[<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" height="90" alt="Get it on IzzyOnDroid">](https://apt.izzysoft.de/fdroid/index/apk/org.kaorun.nouto)
-[<img src="https://github.com/HotarunIchijou/Nouto/blob/8f01ad03341048cf3258f39575d34a1a66c62121/assets/badges/get-it-on-github.png" height="90" alt="Get it on GitHub">](https://github.com/HotarunIchijou/Nouto/releases/latest)
+## 🚀 Enhancements in Nouto Extended
+* **Improved null-safety:** Eliminated unsafe `!!` operators in note adapters and export filename generation, adding HTML stripping and a safe `"note.json"` fallback
+* **Safer Trash interactions:** Replaced unsafe ViewHolder and layout casts in Trash deletion dialogs with safe casts
+* **Clear import error feedback:** Surface descriptive error messages in Snackbars when JSON note imports fail
+* **Smarter search & history:** Filtered search results against plain text instead of raw HTML tags, and upgraded search history persistence to `JSONArray` (with backward compatibility) so queries with commas stay intact
+* **Async file I/O & UI optimizations:** Moved note import/export file I/O to `Dispatchers.IO` coroutines, removed duplicate soft-delete calls, and cached adapter preferences on attach instead of reading per item bind
 
-## 🎨 Screenshots
-| ![Screenshot 1](fastlane/metadata/android/en-US/images/phoneScreenshots/1.png) | ![Screenshot 2](fastlane/metadata/android/en-US/images/phoneScreenshots/2.png) | ![Screenshot 3](fastlane/metadata/android/en-US/images/phoneScreenshots/3.png) |
-|--------------------------------------------------------------------------------|--------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
-| ![Screenshot 4](fastlane/metadata/android/en-US/images/phoneScreenshots/4.png) | ![Screenshot 5](fastlane/metadata/android/en-US/images/phoneScreenshots/5.png) | ![Screenshot 6](fastlane/metadata/android/en-US/images/phoneScreenshots/6.png) |
-
-## 🌍 Translation
-[![Translation status](https://hosted.weblate.org/widget/nouto/287x66-grey.png)](https://hosted.weblate.org/engage/nouto/)
-
-## 🧰 Build instructions
-1. Clone this repository:
-```
-git clone https://github.com/HotarunIchijou/Nouto.git
-```
-2. Open the project in Android Studio
-3. Sync Gradle files and resolve dependencies
-4. Run the project on an emulator or a physical device
-
-## 🛠️ Tech Stack
-* **Programming language:** Kotlin
-* **Design framework:** Material 3 Expressive
-* **Architecture:** MVVM + LiveData
-* **Navigation:** Navigation Component + Safe Args
-* **Database:** Room (SQLite)
-
-## 📧 Contact
-Feel free to reach out with questions or suggestions:
-* Email: hotarunichijou@ik.me
-* Telegram: [@KaorunIchijou](https://t.me/KaorunIchijou)
-
-## 🙌 Special thanks to:  
-[1gravity](https://github.com/1gravity) for creating native [rich text library](https://github.com/1gravity/Android-RTEditor)
+## 🙌 Credits
+* **Original Project:** [Nouto](https://github.com/HotarunIchijou/Nouto) by [HotarunIchijou (Kaoru Ichijou)](https://github.com/HotarunIchijou), licensed under the [MIT License](/LICENSE)
+* **Libraries:**
+  * [1gravity/Android-RTEditor](https://github.com/1gravity/Android-RTEditor) — native Android rich text editor
+  * [rafi0101/Android-Room-Database-Backup](https://github.com/rafi0101/Android-Room-Database-Backup) — local Room database backup and restore
