@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.navigation.navGraphViewModels
@@ -27,6 +28,7 @@ import com.onegravity.rteditor.api.RTApi
 import com.onegravity.rteditor.api.RTMediaFactoryImpl
 import com.onegravity.rteditor.api.RTProxyImpl
 import com.onegravity.rteditor.api.format.RTFormat
+import kotlinx.coroutines.launch
 import org.kaorun.nouto.R
 import org.kaorun.nouto.data.Note
 import org.kaorun.nouto.databinding.FragmentNoteBinding
@@ -472,15 +474,17 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
             val title = binding.noteTitle.getText(RTFormat.HTML).orEmpty()
             val content = binding.noteContent.getText(RTFormat.HTML).orEmpty()
 
-            FileUtils.writeNoteToFile(
-                context = requireContext(),
-                uri = it,
-                title = title,
-                content = content
-            ).onSuccess {
-                setupExportSnackbar(null)
-            }.onFailure { e ->
-                setupExportSnackbar(e.localizedMessage)
+            lifecycleScope.launch {
+                FileUtils.writeNoteToFile(
+                    context = requireContext(),
+                    uri = it,
+                    title = title,
+                    content = content
+                ).onSuccess {
+                    setupExportSnackbar(null)
+                }.onFailure { e ->
+                    setupExportSnackbar(e.localizedMessage)
+                }
             }
         }
     }

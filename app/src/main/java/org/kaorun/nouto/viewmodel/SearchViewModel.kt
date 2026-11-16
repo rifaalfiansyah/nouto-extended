@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.core.content.edit
+import org.json.JSONArray
 
 class SearchViewModel(application: Application) : AndroidViewModel(application) {
     private val prefs = application.getSharedPreferences(
@@ -22,21 +23,30 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
         history.remove(query)
         history.add(0, query)
         val trimmed = history.take(10)
-        prefs.edit { putString("history", trimmed.joinToString(",")) }
+        saveHistory(trimmed)
         _searchHistory.value = trimmed
     }
 
     fun removeFromHistory(query: String) {
         val history = loadHistory().toMutableList()
         history.remove(query)
-        prefs.edit { putString("history", history.joinToString(",")) }
+        saveHistory(history)
         _searchHistory.value = history
     }
 
+    private fun saveHistory(history: List<String>) {
+        prefs.edit { putString("history", JSONArray(history).toString()) }
+    }
+
     private fun loadHistory(): List<String> {
-        return prefs.getString("history", "")
-            ?.split(",")
-            ?.filter { it.isNotBlank() }
-            ?: emptyList()
+        val raw = prefs.getString("history", "") ?: return emptyList()
+        if (raw.isBlank()) return emptyList()
+        return runCatching {
+            val jsonArray = JSONArray(raw)
+            List(jsonArray.length()) { index -> jsonArray.getString(index) }
+                .filter { it.isNotBlank() }
+        }.getOrElse {
+            raw.split(",").filter { it.isNotBlank() }
+        }
     }
 }

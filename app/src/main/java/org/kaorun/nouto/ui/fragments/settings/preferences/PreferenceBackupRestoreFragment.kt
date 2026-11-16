@@ -6,11 +6,13 @@ import android.view.LayoutInflater
 import android.view.View
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.preference.Preference
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import de.raphaelebner.roomdatabasebackup.core.RoomBackup
+import kotlinx.coroutines.launch
 import org.kaorun.nouto.R
 import org.kaorun.nouto.data.NoteDatabase
 import org.kaorun.nouto.ui.MainActivity
@@ -26,24 +28,26 @@ class PreferenceBackupRestoreFragment : PreferenceBaseFragment() {
             ActivityResultContracts.GetContent()
         ) { uri ->
             uri?.let {
-                FileUtils.readFromFile(
-                    context = requireContext(),
-                    uri = uri
-                ).onSuccess { (title, content) ->
-                    findNavController().navigate(
-                        SettingsBackupRestoreFragmentDirections
-                            .actionSettingsBackupRestoreFragmentToNoteFragment(
-                                noteId = -1,
-                                title = title,
-                                content = content
-                            )
-                    )
-                }.onFailure {
-                    Snackbars.showSnackbarNoAction(
-                        view = requireView().rootView,
-                        anchorView = null,
-                        message = ""
-                    )
+                lifecycleScope.launch {
+                    FileUtils.readFromFile(
+                        context = requireContext(),
+                        uri = uri
+                    ).onSuccess { (title, content) ->
+                        findNavController().navigate(
+                            SettingsBackupRestoreFragmentDirections
+                                .actionSettingsBackupRestoreFragmentToNoteFragment(
+                                    noteId = -1,
+                                    title = title,
+                                    content = content
+                                )
+                        )
+                    }.onFailure {
+                        Snackbars.showSnackbarNoAction(
+                            view = requireView().rootView,
+                            anchorView = null,
+                            message = "${getString(R.string.error_occured)}: ${it.localizedMessage}"
+                        )
+                    }
                 }
             }
         }

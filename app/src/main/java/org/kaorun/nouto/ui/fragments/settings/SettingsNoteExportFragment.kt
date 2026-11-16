@@ -6,8 +6,11 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.text.HtmlCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.navGraphViewModels
+import kotlinx.coroutines.launch
 import org.kaorun.nouto.R
 import org.kaorun.nouto.databinding.FragmentNoteExportBinding
 import org.kaorun.nouto.ui.adapter.NoteExportAdapter
@@ -31,15 +34,17 @@ class SettingsNoteExportFragment: BaseFragment(R.layout.fragment_note_export) {
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri: Uri? ->
         uri?.let {
-            FileUtils.writeNoteToFile(
-                context = requireContext(),
-                uri = it,
-                title = title,
-                content = content
-            ).onSuccess {
-                setupExportSnackbar(null)
-            }.onFailure { e ->
-                setupExportSnackbar(e.localizedMessage)
+            lifecycleScope.launch {
+                FileUtils.writeNoteToFile(
+                    context = requireContext(),
+                    uri = it,
+                    title = title,
+                    content = content
+                ).onSuccess {
+                    setupExportSnackbar(null)
+                }.onFailure { e ->
+                    setupExportSnackbar(e.localizedMessage)
+                }
             }
         }
     }
@@ -78,10 +83,12 @@ class SettingsNoteExportFragment: BaseFragment(R.layout.fragment_note_export) {
             onItemClick = { note ->
                 title = note.title
                 content = note.content
-                val defaultFileName = if (!title.isNullOrBlank()) {
-                    "${title!!.take(20)}.json"
-                } else {
-                    "${content!!.take(20)}.json"
+                val plainTitle = title.toPlainText()
+                val plainContent = content.toPlainText()
+                val defaultFileName = when {
+                    plainTitle.isNotBlank() -> "${plainTitle.take(20)}.json"
+                    plainContent.isNotBlank() -> "${plainContent.take(20)}.json"
+                    else -> "note.json"
                 }
                 filePicker.launch(defaultFileName)
             },
@@ -126,4 +133,7 @@ class SettingsNoteExportFragment: BaseFragment(R.layout.fragment_note_export) {
             message = message
         )
     }
+
+    private fun String?.toPlainText() =
+        HtmlCompat.fromHtml(this.orEmpty(), HtmlCompat.FROM_HTML_MODE_COMPACT).toString().trim()
 }

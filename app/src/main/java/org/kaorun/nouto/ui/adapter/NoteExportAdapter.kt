@@ -30,7 +30,7 @@ class NoteExportAdapter(
             }
             note = currentNote
             binding.noteTitle.text = HtmlCompat.fromHtml(
-                (if (note.title.isNullOrBlank()) note.content else note.title)!!,
+                (if (note.title.isNullOrBlank()) note.content else note.title).orEmpty(),
                 HtmlCompat.FROM_HTML_MODE_COMPACT
             )
 

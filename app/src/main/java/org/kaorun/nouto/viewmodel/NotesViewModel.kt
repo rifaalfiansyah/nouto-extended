@@ -1,9 +1,11 @@
 package org.kaorun.nouto.viewmodel
 
 import android.app.Application
+import androidx.core.text.HtmlCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.map
 import androidx.lifecycle.switchMap
 import androidx.lifecycle.viewModelScope
 import org.kaorun.nouto.data.Note
@@ -35,7 +37,12 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
         deletedNotes = noteRepository.deletedNotes
         displayedNotes = searchQuery.switchMap { query ->
             if (query.isNullOrBlank()) _allNotes
-            else noteRepository.searchNotes(query)
+            else noteRepository.searchNotes(query).map { notes ->
+                notes.filter { note ->
+                    note.title.toPlainText().contains(query, ignoreCase = true) ||
+                        note.content.toPlainText().contains(query, ignoreCase = true)
+                }
+            }
         }
     }
 
@@ -103,11 +110,16 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setPendingDelete(note: Note) {
-        markDeleted(note)
+        if (!note.isDeleted) {
+            markDeleted(note)
+        }
         _pendingDelete.value = note
     }
 
     fun clearPendingDelete() {
         _pendingDelete.value = null
     }
+
+    private fun String?.toPlainText(): String =
+        HtmlCompat.fromHtml(this.orEmpty(), HtmlCompat.FROM_HTML_MODE_COMPACT).toString().trim()
 }

@@ -111,9 +111,10 @@ class TrashFragment : BaseFragment(R.layout.fragment_trash) {
     private fun setupDeleteDialog(note: Note) {
         val position = noteAdapter.currentList.indexOf(note)
         val holder = binding.recyclerView
-            .findViewHolderForAdapterPosition(position) as NoteAdapter.NoteViewHolder
-        (holder.itemView as ListItemLayout)
-            .setSwipeState(SwipeableListItem.STATE_CLOSED, Gravity.END)
+            .findViewHolderForAdapterPosition(position) as? NoteAdapter.NoteViewHolder
+        (holder?.itemView as? ListItemLayout)?.let {
+            it.setSwipeState(SwipeableListItem.STATE_CLOSED, Gravity.END)
+        }
 
         DeleteDialog.show(requireContext(), resources) {
             viewModel.deleteNote(note)

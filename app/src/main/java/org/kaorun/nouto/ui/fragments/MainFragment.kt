@@ -104,7 +104,7 @@ class MainFragment : BaseFragment(R.layout.fragment_main) {
         noteAdapter = NoteAdapter(
             onItemClick = { note -> openNoteFragment(note.id) },
             onDeleteClick = { note ->
-                setupSnackbar(note)
+                viewModel.setPendingDelete(note)
             }
         )
         binding.recyclerView.adapter = noteAdapter
@@ -236,7 +236,6 @@ class MainFragment : BaseFragment(R.layout.fragment_main) {
     }
 
     private fun setupSnackbar(note: Note) {
-       viewModel.markDeleted(note)
         Snackbars.showSnackbarWithUndo(
             view = binding.root,
             anchorView = binding.fab,

@@ -25,6 +25,15 @@ class NoteAdapter(
     private val onDeleteClick: (Note) -> Unit,
     private val onRestoreClick: ((Note) -> Unit)? = null
 ) : ListAdapter<Note, NoteAdapter.NoteViewHolder>(NoteDiffCallback()) {
+    private var isTitleVisible: Boolean = true
+
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        super.onAttachedToRecyclerView(recyclerView)
+        isTitleVisible = PreferenceManager
+            .getDefaultSharedPreferences(recyclerView.context)
+            .getBoolean(PreferenceAppearanceKeys.IS_SHOW_TITLE, true)
+    }
+
     inner class NoteViewHolder(
         private val binding: ItemNoteBinding
     ) : ListItemViewHolder(binding.root) {
@@ -57,16 +66,13 @@ class NoteAdapter(
                 binding.root.setSwipeState(SwipeableListItem.STATE_CLOSED, it)
             }
             note = currentNote
-            val isTitleVisible = PreferenceManager
-                .getDefaultSharedPreferences(binding.root.context)
-                .getBoolean(PreferenceAppearanceKeys.IS_SHOW_TITLE, true)
 
             binding.noteTitle.text = HtmlCompat.fromHtml(
                 /* source = */ (
                     if (isTitleVisible && !note.title.isNullOrBlank()) note.title
                     else if (note.content.isNullOrBlank()) note.title
                     else note.content
-                )!!,
+                ).orEmpty(),
                 /* flags = */ HtmlCompat.FROM_HTML_MODE_COMPACT
             )
 
