@@ -9,7 +9,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "org.kaorun.nouto"
+        applicationId = "dev.rifaalfiansyah.nouto"
         minSdk = 28
         targetSdk = 37
         versionCode = 4
