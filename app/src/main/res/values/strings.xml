@@ -1,6 +1,6 @@
 <resources>
-    <string name="app_name" translatable="false">Nouto</string>
-    <string name="repository_link" translatable="false">https://github.com/HotarunIchijou/Nouto</string>
+    <string name="app_name" translatable="false">Nouto Extended</string>
+    <string name="repository_link" translatable="false">https://github.com/rifaalfiansyah/nouto-extended</string>
     <string name="telegram_link" translatable="false">https://t.me/KaorunIchijou"</string>
     <string name="save">Save</string>
     <string name="title">Title</string>

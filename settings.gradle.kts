@@ -21,6 +21,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Nouto"
+rootProject.name = "Nouto Extended"
 include(":app")
  
