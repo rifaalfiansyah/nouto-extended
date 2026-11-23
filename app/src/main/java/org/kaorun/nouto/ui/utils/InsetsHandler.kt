@@ -59,40 +59,39 @@ object InsetsHandler {
         }
     }
 
-    fun applyImeInsets(view: View) {
+    fun applyImeInsets(view: View, additionalBottomMargin: Int? = null) {
+        val baseBottomMargin = additionalBottomMargin
+            ?: (view.layoutParams as? MarginLayoutParams)?.bottomMargin
+            ?: 0
+
+        fun applyInsets(insets: WindowInsetsCompat) {
+            val systemBarsBottom = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            ).bottom
+            val imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            val imeOffset = (imeBottom - systemBarsBottom).coerceAtLeast(0)
+            view.updateLayoutParams<MarginLayoutParams> {
+                bottomMargin = baseBottomMargin + systemBarsBottom + imeOffset
+            }
+        }
+
+        ViewCompat.setOnApplyWindowInsetsListener(view) { _, insets ->
+            applyInsets(insets)
+            insets
+        }
         ViewCompat.setWindowInsetsAnimationCallback(
             view,
             object : WindowInsetsAnimationCompat.Callback(DISPATCH_MODE_STOP) {
-                var startBottom = 0f
-                var endBottom = 0f
-
-                override fun onPrepare(animation: WindowInsetsAnimationCompat) {
-                    startBottom = view.bottom.toFloat()
-                }
-
-                override fun onStart(
-                    animation: WindowInsetsAnimationCompat,
-                    bounds: WindowInsetsAnimationCompat.BoundsCompat
-                ): WindowInsetsAnimationCompat.BoundsCompat {
-                    endBottom = view.bottom.toFloat()
-                    return bounds
-                }
-
                 override fun onProgress(
                     insets: WindowInsetsCompat,
                     runningAnimations: MutableList<WindowInsetsAnimationCompat>
                 ): WindowInsetsCompat {
-                    val imeAnimation = runningAnimations.find {
-                        it.typeMask and WindowInsetsCompat.Type.ime() != 0
-                    } ?: return insets
-
-                    val translation = (startBottom - endBottom) * (1 - imeAnimation.interpolatedFraction)
-                    view.translationY = translation
-
+                    applyInsets(insets)
                     return insets
                 }
             }
         )
+        ViewCompat.requestApplyInsets(view)
     }
 
     fun applyImeInsets(scrollView: NestedScrollView) {

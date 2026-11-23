@@ -17,4 +17,5 @@ object PreferenceAppearanceKeys {
     const val IS_SHOW_TITLE = "is_show_title"
     const val IS_SHOW_KEYBOARD = "is_show_keyboard"
     const val IS_FOCUS_ON_CONTENT = "is_focus_on_content"
+    const val IS_HAPTIC_FEEDBACK_ENABLED = "haptic_feedback"
 }

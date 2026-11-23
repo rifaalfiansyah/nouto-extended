@@ -1,15 +1,18 @@
 package org.kaorun.nouto.ui.adapter
 
 import android.content.res.ColorStateList
+import android.view.HapticFeedbackConstants
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.text.HtmlCompat
+import androidx.core.view.isVisible
 import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.MaterialColors
+import com.google.android.material.R as MaterialR
 import com.google.android.material.listitem.ListItemCardView.SwipeCallback
 import com.google.android.material.listitem.ListItemViewHolder
 import com.google.android.material.listitem.RevealableListItem
@@ -20,6 +23,7 @@ import org.kaorun.nouto.data.Note
 import org.kaorun.nouto.data.PreferenceAppearanceKeys
 import org.kaorun.nouto.databinding.ItemNoteBinding
 import org.kaorun.nouto.ui.utils.DateFormatUtils
+import org.kaorun.nouto.ui.utils.HapticFeedbackHelper
 import org.kaorun.nouto.ui.utils.applyNoteCardAppearance
 
 class NoteAdapter(
@@ -64,13 +68,31 @@ class NoteAdapter(
             })
             binding.cardView.setOnClickListener { onItemClick(note) }
             binding.cardView.setOnLongClickListener {
-                onItemLongClick?.invoke(note)
-                onItemLongClick != null
+                val action = onItemLongClick ?: return@setOnLongClickListener false
+                HapticFeedbackHelper.perform(binding.cardView, HapticFeedbackConstants.LONG_PRESS)
+                binding.cardView.animate().cancel()
+                binding.cardView.animate()
+                    .scaleX(0.97f)
+                    .scaleY(0.97f)
+                    .setDuration(80L)
+                    .withEndAction {
+                        binding.cardView.animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(120L)
+                            .start()
+                    }
+                    .start()
+                action(note)
+                true
             }
             binding.buttonStart.setOnClickListener { onDeleteClick(note) }
         }
 
         fun bind(currentNote: Note) {
+            binding.cardView.animate().cancel()
+            binding.cardView.scaleX = 1f
+            binding.cardView.scaleY = 1f
             binding.root.setSwipeState(SwipeableListItem.STATE_CLOSED, Gravity.START)
             binding.root.setSwipeState(SwipeableListItem.STATE_CLOSED, Gravity.END)
             note = currentNote
@@ -84,18 +106,46 @@ class NoteAdapter(
             binding.noteTitle.text = HtmlCompat.fromHtml(displayHtml, HtmlCompat.FROM_HTML_MODE_COMPACT)
             binding.noteTime.text = DateFormatUtils.formatNoteTime(binding.root.context, note.time)
             binding.applyNoteCardAppearance(note)
+            binding.pinIndicator.isVisible = note.isPinned
+            binding.pinIndicator.imageTintList = ColorStateList.valueOf(
+                MaterialColors.getColor(
+                    binding.pinIndicator,
+                    if (note.isDeleted) MaterialR.attr.colorOnSurfaceVariant
+                    else MaterialR.attr.colorOnSecondaryContainer
+                )
+            )
 
             if (onRestoreClick != null) {
-                binding.buttonStart.setIconResource(R.drawable.delete_forever_24px)
-                binding.buttonEnd.apply {
-                    setIconResource(R.drawable.restore_from_trash_24px)
+                binding.buttonStart.apply {
+                    setIconResource(R.drawable.delete_forever_24px)
+                    contentDescription = binding.root.context.getString(
+                        R.string.delete_permanently_note_description
+                    )
                     backgroundTintList = ColorStateList.valueOf(
-                        MaterialColors.getColor(this, androidx.appcompat.R.attr.colorPrimary)
+                        MaterialColors.getColor(this, MaterialR.attr.colorErrorContainer)
                     )
                     iconTint = ColorStateList.valueOf(
-                        MaterialColors.getColor(this, com.google.android.material.R.attr.colorOnPrimary)
+                        MaterialColors.getColor(this, MaterialR.attr.colorOnErrorContainer)
                     )
                 }
+                binding.buttonEnd.apply {
+                    setIconResource(R.drawable.restore_from_trash_24px)
+                    contentDescription = binding.root.context.getString(
+                        R.string.restore_note_description
+                    )
+                    backgroundTintList = ColorStateList.valueOf(
+                        MaterialColors.getColor(this, MaterialR.attr.colorPrimaryContainer)
+                    )
+                    iconTint = ColorStateList.valueOf(
+                        MaterialColors.getColor(this, MaterialR.attr.colorOnPrimaryContainer)
+                    )
+                }
+            } else {
+                val deleteDescription = binding.root.context.getString(
+                    R.string.delete_note_action_description
+                )
+                binding.buttonStart.contentDescription = deleteDescription
+                binding.buttonEnd.contentDescription = deleteDescription
             }
         }
     }

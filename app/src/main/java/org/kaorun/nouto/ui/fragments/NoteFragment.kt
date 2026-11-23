@@ -77,6 +77,8 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
     private var metadataAnimator: ValueAnimator? = null
     private val metadataHoldHandler = Handler(Looper.getMainLooper())
     private val autoSaveHandler = Handler(Looper.getMainLooper())
+    private val saveStatusHandler = Handler(Looper.getMainLooper())
+    private val hideSaveStatusRunnable = Runnable { showSaveStatus(null) }
     private val metadataUpdateHandler = Handler(Looper.getMainLooper())
     private val metadataUpdateRunnable = Runnable { updateMetadata() }
     private val autoSaveRunnable = Runnable {
@@ -382,9 +384,40 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
             metadataUpdateHandler.removeCallbacks(metadataUpdateRunnable)
             metadataUpdateHandler.postDelayed(metadataUpdateRunnable, METADATA_UPDATE_DEBOUNCE_MS)
             if (hasUnsavedChanges()) {
+                showSaveStatus(R.string.note_save_unsaved)
                 scheduleAutoSave()
+            } else {
+                autoSaveHandler.removeCallbacks(autoSaveRunnable)
+                showSaveStatus(null)
             }
         }
+    }
+
+    private fun showSaveStatus(messageRes: Int?, hideAfterMs: Long = 0L) {
+        val status = _binding?.noteSaveStatus ?: return
+        saveStatusHandler.removeCallbacks(hideSaveStatusRunnable)
+        if (messageRes == null) {
+            status.isVisible = false
+            return
+        }
+
+        status.setText(messageRes)
+        status.isVisible = true
+        if (hideAfterMs > 0L) {
+            saveStatusHandler.postDelayed(hideSaveStatusRunnable, hideAfterMs)
+        }
+    }
+
+    private fun showSaveResult(saved: Boolean) {
+        val statusRes = when {
+            !saved -> R.string.note_save_failed
+            _binding != null && hasUnsavedChanges() -> R.string.note_save_unsaved
+            else -> R.string.note_save_saved
+        }
+        showSaveStatus(
+            statusRes,
+            if (statusRes == R.string.note_save_unsaved) 0L else SAVE_STATUS_VISIBLE_MS
+        )
     }
 
     private fun setupChangeListener() {
@@ -622,11 +655,10 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
             isTopSystemPaddingEnabled = false,
             additionalPadding = resources.getDimensionPixelSize(R.dimen.button_group_padding)
         )
-        InsetsHandler.applyViewInsets(
+        InsetsHandler.applyImeInsets(
             binding.buttonEditNote,
             resources.getDimensionPixelSize(R.dimen.fab_margin)
         )
-        InsetsHandler.applyImeInsets(binding.buttonEditNote)
         InsetsHandler.applyImeInsets(binding.scrollView)
         InsetsHandler.applyImeInsets(binding.floatingToolbar)
         InsetsHandler.applyViewInsets(
@@ -764,7 +796,10 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
                 savedContentHtml = content
                 currentNoteTime = time
                 updateMetadata()
-                viewModel.updateNote(updated)
+                showSaveStatus(R.string.note_save_saving)
+                viewModel.updateNote(updated) { saved ->
+                    showSaveResult(saved)
+                }
             }
         } ?: run {
             if (!isInsertingNote && (title.isNotEmpty() || content.isNotEmpty())) {
@@ -773,18 +808,24 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
                 savedContentHtml = content
                 currentNoteTime = time
                 updateMetadata()
+                showSaveStatus(R.string.note_save_saving)
                 viewModel.addNote(
                     title = title,
                     content = content,
                     time = time,
-                    isPinned = isPinned
-                ) { insertedNote ->
-                    isInsertingNote = false
-                    note = insertedNote
-                    if (_binding != null && !isDeleting && !isImporting && hasUnsavedChanges()) {
-                        saveNote()
+                    isPinned = isPinned,
+                    onInserted = { insertedNote ->
+                        isInsertingNote = false
+                        note = insertedNote
+                        if (_binding != null && !isDeleting && !isImporting && hasUnsavedChanges()) {
+                            saveNote()
+                        }
+                    },
+                    onSaveComplete = { saved ->
+                        if (!saved) isInsertingNote = false
+                        showSaveResult(saved)
                     }
-                }
+                )
             }
         }
     }
@@ -863,6 +904,7 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
     override fun onDestroyView() {
         super.onDestroyView()
         autoSaveHandler.removeCallbacksAndMessages(null)
+        saveStatusHandler.removeCallbacksAndMessages(null)
         metadataUpdateHandler.removeCallbacksAndMessages(null)
         metadataHoldHandler.removeCallbacksAndMessages(null)
         metadataAnimator?.cancel()
@@ -874,5 +916,6 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
 
     private companion object {
         const val METADATA_UPDATE_DEBOUNCE_MS = 150L
+        const val SAVE_STATUS_VISIBLE_MS = 2_000L
     }
 }

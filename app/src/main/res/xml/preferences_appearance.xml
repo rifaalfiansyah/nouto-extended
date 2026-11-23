@@ -30,6 +30,16 @@
     </PreferenceCategory>
 
     <PreferenceCategory
+        android:title="@string/interaction">
+
+        <org.kaorun.nouto.ui.components.MaterialSwitchPreferenceCompat
+            android:key="haptic_feedback"
+            android:title="@string/haptic_feedback"
+            android:summary="@string/haptic_feedback_summary"
+            android:defaultValue="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
         android:title="@string/note_editor">
 
         <org.kaorun.nouto.ui.components.MaterialSwitchPreferenceCompat

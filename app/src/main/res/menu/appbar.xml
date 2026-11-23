@@ -1,12 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:id="@+id/open_note"
-        android:icon="@drawable/edit_24px"
-        android:title="@string/open_note"
-        android:visible="false" />
-
-    <item
         android:id="@+id/pin"
         android:icon="@drawable/keep_24px"
         android:title="@string/pin" />

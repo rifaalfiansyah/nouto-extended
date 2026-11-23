@@ -66,7 +66,8 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
         content: String?,
         time: Long = System.currentTimeMillis(),
         isPinned: Boolean = false,
-        onInserted: ((Note) -> Unit)? = null
+        onInserted: ((Note) -> Unit)? = null,
+        onSaveComplete: ((Boolean) -> Unit)? = null
     ) {
         if (title.isNullOrBlank() && content.isNullOrBlank()) return
         viewModelScope.launch {
@@ -76,20 +77,30 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
                 time = time,
                 isPinned = isPinned
             )
-            val id = noteRepository.insert(newNote).toInt()
-            onInserted?.invoke(newNote.copy(id = id))
+            val insertedNote = runCatching {
+                val id = noteRepository.insert(newNote).toInt()
+                newNote.copy(id = id)
+            }.getOrElse {
+                onSaveComplete?.invoke(false)
+                return@launch
+            }
+            onSaveComplete?.invoke(true)
+            onInserted?.invoke(insertedNote)
         }
     }
 
-    fun updateNote(note: Note) {
+    fun updateNote(note: Note, onSaveComplete: ((Boolean) -> Unit)? = null) {
         viewModelScope.launch {
-            if (NotePersistencePolicy.shouldDelete(note)) {
-                noteRepository.delete(note)
-            } else {
-                // Autosave may have deleted this row while the editor was empty.
-                // Upsert lets typing again in the same editor restore it.
-                noteRepository.upsert(note)
-            }
+            val saved = runCatching {
+                if (NotePersistencePolicy.shouldDelete(note)) {
+                    noteRepository.delete(note)
+                } else {
+                    // Autosave may have deleted this row while the editor was empty.
+                    // Upsert lets typing again in the same editor restore it.
+                    noteRepository.upsert(note)
+                }
+            }.isSuccess
+            onSaveComplete?.invoke(saved)
         }
     }
 

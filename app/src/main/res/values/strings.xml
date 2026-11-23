@@ -32,6 +32,14 @@
     <string name="notes_empty">You don\'t have any notes yet</string>
     <string name="nothing_found">Nothing found in your notes</string>
     <string name="note_deleted_message">Note has been deleted</string>
+    <string name="note_pinned_label">Pinned</string>
+    <string name="delete_note_action_description">Move note to Trash</string>
+    <string name="delete_permanently_note_description">Delete note permanently</string>
+    <string name="restore_note_description">Restore note</string>
+    <string name="note_save_unsaved">Unsaved</string>
+    <string name="note_save_saving">Saving…</string>
+    <string name="note_save_saved">Saved</string>
+    <string name="note_save_failed">Save failed</string>
     <string name="trash">Trash</string>
     <string name="there_are_no_deleted_notes">There are no deleted notes</string>
     <string name="delete_note_dialog_title">Delete note forever?</string>
@@ -59,7 +67,6 @@
     <string name="unpin">Unpin</string>
     <string name="note_pinned_message">Note has been pinned</string>
     <string name="note_unpinned_message">Note has been unpinned</string>
-    <string name="open_note">Open</string>
     <string name="open_menu">Open menu</string>
     <string name="backup_database">Backup application data</string>
     <string name="restore_application_data">Restore application data</string>
@@ -88,6 +95,9 @@
     <string name="note_imported_message">Note has been imported successfully</string>
     <string name="backup_restore_description">Backup and restore your notes. All backups are stored locally on your device</string>
     <string name="note_editor">Note editor</string>
+    <string name="interaction">Interaction</string>
+    <string name="haptic_feedback">Haptic feedback</string>
+    <string name="haptic_feedback_summary">Vibrate for PIN taps, errors and long-press actions</string>
     <string name="edit_note">Edit note</string>
     <string name="show_keyboard">Show keyboard</string>
     <string name="show_keyboard_summary">Automatically show keyboard when opening note</string>

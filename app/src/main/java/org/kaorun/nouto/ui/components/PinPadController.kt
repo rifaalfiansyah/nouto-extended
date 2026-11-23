@@ -8,6 +8,7 @@ import androidx.core.view.isInvisible
 import com.google.android.material.R as MaterialR
 import com.google.android.material.color.MaterialColors
 import org.kaorun.nouto.databinding.ViewPinLockBinding
+import org.kaorun.nouto.ui.utils.HapticFeedbackHelper
 
 class PinPadController(
     private val binding: ViewPinLockBinding,
@@ -46,12 +47,12 @@ class PinPadController(
     init {
         digitButtons.forEach { (button, digit) ->
             button.setOnClickListener {
-                it.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                HapticFeedbackHelper.perform(it, HapticFeedbackConstants.KEYBOARD_TAP)
                 appendDigit(digit)
             }
         }
         binding.pinKeyBackspace.setOnClickListener {
-            it.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            HapticFeedbackHelper.perform(it, HapticFeedbackConstants.KEYBOARD_TAP)
             removeLastDigit()
         }
         binding.pinKeyBiometric.setOnClickListener {
@@ -81,7 +82,10 @@ class PinPadController(
         enteredDigits.clear()
         updateDots()
         if (animateError) {
-            binding.pinDotsContainer.performHapticFeedback(HapticFeedbackConstants.REJECT)
+            HapticFeedbackHelper.perform(
+                binding.pinDotsContainer,
+                HapticFeedbackConstants.REJECT
+            )
             ObjectAnimator.ofFloat(
                 binding.pinDotsContainer,
                 "translationX",

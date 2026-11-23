@@ -160,10 +160,10 @@ class MainFragment : BaseFragment(R.layout.fragment_main) {
         NoteActionsMenu.show(
             anchor = anchor ?: binding.recyclerView,
             note = note,
-            onOpen = { openNoteFragment(note.id) },
             onPin = { selectedNote -> togglePin(selectedNote) },
             onExport = { selectedNote -> exportNote(selectedNote) },
-            onDelete = { selectedNote -> viewModel.setPendingDelete(selectedNote) }
+            onDelete = { selectedNote -> viewModel.setPendingDelete(selectedNote) },
+            gapBelowAnchorDp = 8
         )
     }
 
