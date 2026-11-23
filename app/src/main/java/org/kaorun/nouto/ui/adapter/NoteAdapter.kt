@@ -25,7 +25,8 @@ import org.kaorun.nouto.ui.utils.applyNoteCardAppearance
 class NoteAdapter(
     private val onItemClick: (Note) -> Unit,
     private val onDeleteClick: (Note) -> Unit,
-    private val onRestoreClick: ((Note) -> Unit)? = null
+    private val onRestoreClick: ((Note) -> Unit)? = null,
+    private val onItemLongClick: ((Note) -> Unit)? = null
 ) : ListAdapter<Note, NoteAdapter.NoteViewHolder>(NoteDiffCallback()) {
     private var isTitleVisible: Boolean = true
 
@@ -62,6 +63,10 @@ class NoteAdapter(
                 }
             })
             binding.cardView.setOnClickListener { onItemClick(note) }
+            binding.cardView.setOnLongClickListener {
+                onItemLongClick?.invoke(note)
+                onItemLongClick != null
+            }
             binding.buttonStart.setOnClickListener { onDeleteClick(note) }
         }
 

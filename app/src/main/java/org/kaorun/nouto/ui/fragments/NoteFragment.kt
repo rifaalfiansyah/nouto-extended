@@ -9,7 +9,6 @@ import android.os.Looper
 import android.text.Editable
 import android.text.TextUtils
 import android.text.TextWatcher
-import android.view.ContextThemeWrapper
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -20,7 +19,6 @@ import android.view.animation.OvershootInterpolator
 import android.widget.LinearLayout
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.widget.PopupMenu
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.animation.doOnEnd
 import androidx.core.content.ContextCompat
@@ -45,6 +43,7 @@ import org.kaorun.nouto.R
 import org.kaorun.nouto.data.Note
 import org.kaorun.nouto.databinding.FragmentNoteBinding
 import org.kaorun.nouto.ui.components.DeleteDialog
+import org.kaorun.nouto.ui.components.NoteActionsMenu
 import org.kaorun.nouto.ui.components.Snackbars
 import org.kaorun.nouto.ui.components.TextStyleFloatingToolbar
 import org.kaorun.nouto.ui.fragments.base.BaseFragment
@@ -272,51 +271,33 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
         }
 
         binding.buttonMenu.setOnClickListener { view ->
-            val wrapper = ContextThemeWrapper(requireContext(), R.style.ThemeOverlay_Popup)
-            val popup = PopupMenu(wrapper, view)
-            popup.menuInflater.inflate(R.menu.appbar, popup.menu)
-
-            val pinMenuItem = popup.menu.findItem(R.id.pin)
-            if (isPinned) {
-                pinMenuItem.title = getString(R.string.unpin)
-                pinMenuItem.setIcon(R.drawable.keep_off_24px)
-            } else {
-                pinMenuItem.title = getString(R.string.pin)
-                pinMenuItem.setIcon(R.drawable.keep_24px)
-            }
-
-            popup.setForceShowIcon(true)
-
-            popup.setOnMenuItemClickListener { item ->
-                when (item.itemId) {
-                    R.id.pin -> {
-                        setupPinSnackbar()
-                        isPinned = !isPinned
-                        saveNote()
-                        true
-                    }
-                    R.id.export -> {
-                        exportNote()
-                        true
-                    }
-                    R.id.delete -> {
-                        note?.let {
+            NoteActionsMenu.show(
+                anchor = view,
+                note = note ?: Note(
+                    title = binding.noteTitle.getText(RTFormat.HTML),
+                    content = binding.noteContent.getText(RTFormat.HTML),
+                    time = currentNoteTime,
+                    isPinned = isPinned
+                ),
+                onPin = {
+                    setupPinSnackbar()
+                    isPinned = !isPinned
+                    saveNote()
+                },
+                onExport = { exportNote() },
+                onDelete = {
+                    note?.let {
+                        isDeleting = true
+                        viewModel.setPendingDelete(it)
+                        closeNoteFragment()
+                    } ?: run {
+                        DeleteDialog.show(requireContext(), resources) {
                             isDeleting = true
-                            viewModel.setPendingDelete(it)
                             closeNoteFragment()
-                        } ?: run {
-                            DeleteDialog.show(requireContext(), resources) {
-                                isDeleting = true
-                                closeNoteFragment()
-                            }
                         }
-                        true
                     }
-                    else -> false
                 }
-            }
-
-            popup.show()
+            )
         }
     }
 

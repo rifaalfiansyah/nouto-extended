@@ -13,11 +13,13 @@ import android.view.WindowInsetsController
 import android.view.animation.AnimationUtils
 import android.view.animation.OvershootInterpolator
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.OnBackPressedCallback
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavDirections
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.navGraphViewModels
@@ -29,17 +31,22 @@ import androidx.transition.TransitionManager
 import androidx.transition.TransitionSet
 import com.google.android.material.sidesheet.SideSheetDialog
 import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.launch
 import org.kaorun.nouto.BuildConfig
 import org.kaorun.nouto.R
 import org.kaorun.nouto.data.Note
 import org.kaorun.nouto.databinding.FragmentMainBinding
 import org.kaorun.nouto.ui.adapter.NoteAdapter
 import org.kaorun.nouto.ui.components.MainSearchView
+import org.kaorun.nouto.ui.components.NoteActionsMenu
 import org.kaorun.nouto.ui.components.Snackbars
 import org.kaorun.nouto.ui.fragments.base.BaseFragment
 import org.kaorun.nouto.ui.model.LayoutMode
 import org.kaorun.nouto.ui.utils.InsetsHandler
 import org.kaorun.nouto.ui.utils.MarginItemDecoration
+import org.kaorun.nouto.ui.utils.AppLockManager
+import org.kaorun.nouto.ui.utils.FileUtils
+import org.kaorun.nouto.ui.utils.toPlainText
 import org.kaorun.nouto.viewmodel.NotesViewModel
 import org.kaorun.nouto.viewmodel.SearchViewModel
 
@@ -50,6 +57,28 @@ class MainFragment : BaseFragment(R.layout.fragment_main) {
     private val viewModel: NotesViewModel by navGraphViewModels(R.id.nav_graph)
     private val searchViewModel: SearchViewModel by viewModels()
     private var currentLayoutMode: LayoutMode? = null
+    private var noteToExport: Note? = null
+    private val exportNoteLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        val selectedNote = noteToExport
+        noteToExport = null
+        if (uri == null || selectedNote == null) return@registerForActivityResult
+        val appContext = context?.applicationContext ?: return@registerForActivityResult
+
+        lifecycleScope.launch {
+            FileUtils.writeNoteToFile(
+                context = appContext,
+                uri = uri,
+                title = selectedNote.title,
+                content = selectedNote.content
+            ).onSuccess {
+                showExportSnackbar(getString(R.string.export_success))
+            }.onFailure { error ->
+                showExportSnackbar("${getString(R.string.error_occured)}: ${error.localizedMessage}")
+            }
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -116,9 +145,65 @@ class MainFragment : BaseFragment(R.layout.fragment_main) {
             onItemClick = { note -> openNoteFragment(note.id) },
             onDeleteClick = { note ->
                 viewModel.setPendingDelete(note)
-            }
+            },
+            onItemLongClick = ::showNoteActions
         )
         binding.recyclerView.adapter = noteAdapter
+    }
+
+    private fun showNoteActions(note: Note) {
+        val position = noteAdapter.currentList.indexOfFirst { it.id == note.id }
+        val anchor = if (position != RecyclerView.NO_POSITION) {
+            binding.recyclerView.findViewHolderForAdapterPosition(position)?.itemView
+        } else null
+
+        NoteActionsMenu.show(
+            anchor = anchor ?: binding.recyclerView,
+            note = note,
+            onOpen = { openNoteFragment(note.id) },
+            onPin = { selectedNote -> togglePin(selectedNote) },
+            onExport = { selectedNote -> exportNote(selectedNote) },
+            onDelete = { selectedNote -> viewModel.setPendingDelete(selectedNote) }
+        )
+    }
+
+    private fun togglePin(note: Note) {
+        val updatedNote = note.copy(
+            isPinned = !note.isPinned,
+            time = System.currentTimeMillis()
+        )
+        viewModel.updateNote(updatedNote)
+        val messageRes = if (updatedNote.isPinned) {
+            R.string.note_pinned_message
+        } else {
+            R.string.note_unpinned_message
+        }
+        Snackbars.showSnackbarWithUndo(
+            view = binding.root,
+            anchorView = binding.fab,
+            message = getString(messageRes),
+            undoAction = { viewModel.updateNote(note) }
+        )
+    }
+
+    private fun exportNote(note: Note) {
+        val fileNameSource = note.title.toPlainText().ifBlank { note.content.toPlainText() }
+        val fileName = fileNameSource.take(20)
+            .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+            .ifBlank { "note" }
+
+        noteToExport = note
+        AppLockManager.suppressNextLockOnce()
+        exportNoteLauncher.launch("$fileName.json")
+    }
+
+    private fun showExportSnackbar(message: String) {
+        val currentBinding = _binding ?: return
+        Snackbars.showSnackbarNoAction(
+            view = currentBinding.root,
+            anchorView = currentBinding.fab,
+            message = message
+        )
     }
 
     private fun setupListeners() {

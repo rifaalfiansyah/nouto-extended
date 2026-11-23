@@ -59,6 +59,7 @@
     <string name="unpin">Unpin</string>
     <string name="note_pinned_message">Note has been pinned</string>
     <string name="note_unpinned_message">Note has been unpinned</string>
+    <string name="open_note">Open</string>
     <string name="open_menu">Open menu</string>
     <string name="backup_database">Backup application data</string>
     <string name="restore_application_data">Restore application data</string>
