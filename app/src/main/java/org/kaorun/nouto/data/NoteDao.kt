@@ -6,6 +6,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.OnConflictStrategy
 
 @Dao
 interface NoteDao {
@@ -26,6 +27,9 @@ interface NoteDao {
 
     @Update
     suspend fun update(note: Note)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(note: Note): Long
 
     @Delete
     suspend fun delete(note: Note)

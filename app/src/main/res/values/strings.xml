@@ -121,6 +121,7 @@
     <string name="app_lock_enter_pin">Enter your 4-digit PIN</string>
     <string name="app_lock_enter_pin_or_biometric">Use biometric or enter your 4-digit PIN</string>
     <string name="app_lock_wrong_pin">Incorrect PIN. Try again</string>
+    <string name="app_lock_rate_limited">Too many attempts. Try again in %1$d seconds</string>
     <string name="app_lock_create_pin_title">Set PIN</string>
     <string name="app_lock_create_pin_subtitle">Choose a 4-digit PIN to lock your notes</string>
     <string name="app_lock_confirm_pin_title">Confirm PIN</string>

@@ -6,6 +6,10 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.kaorun.nouto.R
 import org.kaorun.nouto.databinding.FragmentPinSetupBinding
 import org.kaorun.nouto.ui.components.PinPadController
@@ -34,6 +38,7 @@ class PinSetupFragment : BaseFragment(R.layout.fragment_pin_setup) {
     private lateinit var pinPadController: PinPadController
     private var step: Step = Step.ENTER_NEW
     private var pendingNewPin: String = ""
+    private var isVerifyingPin = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -98,7 +103,37 @@ class PinSetupFragment : BaseFragment(R.layout.fragment_pin_setup) {
     private fun handlePinEntered(pin: String) {
         when (step) {
             Step.VERIFY_CURRENT -> {
-                if (AppLockManager.verifyPin(requireContext(), pin)) {
+                verifyCurrentPin(pin)
+            }
+            Step.ENTER_NEW -> {
+                pendingNewPin = pin
+                step = Step.CONFIRM_NEW
+                pinPadController.clear()
+                renderStep()
+            }
+            Step.CONFIRM_NEW -> {
+                if (pin == pendingNewPin) {
+                    saveNewPin(pin)
+                } else {
+                    pendingNewPin = ""
+                    step = Step.ENTER_NEW
+                    pinPadController.clear(animateError = true)
+                    renderStep(getString(R.string.app_lock_pin_mismatch))
+                }
+            }
+        }
+    }
+
+    private fun verifyCurrentPin(pin: String) {
+        if (isVerifyingPin) return
+        isVerifyingPin = true
+        val appContext = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Default) {
+            val verified = AppLockManager.verifyPin(appContext, pin)
+            withContext(Dispatchers.Main) {
+                isVerifyingPin = false
+                if (!isAdded || _binding == null) return@withContext
+                if (verified) {
                     if (args.mode == MODE_DISABLE) {
                         AppLockManager.disableLock(requireContext())
                         showResultSnackbar(R.string.app_lock_disabled_message)
@@ -110,31 +145,32 @@ class PinSetupFragment : BaseFragment(R.layout.fragment_pin_setup) {
                     }
                 } else {
                     pinPadController.clear(animateError = true)
-                    renderStep(getString(R.string.app_lock_wrong_pin))
-                }
-            }
-            Step.ENTER_NEW -> {
-                pendingNewPin = pin
-                step = Step.CONFIRM_NEW
-                pinPadController.clear()
-                renderStep()
-            }
-            Step.CONFIRM_NEW -> {
-                if (pin == pendingNewPin) {
-                    AppLockManager.savePin(requireContext(), pin)
-                    val msgRes = if (args.mode == MODE_CHANGE) {
-                        R.string.app_lock_pin_updated
+                    val remainingMs = AppLockManager.getLockoutRemainingMs(requireContext())
+                    val message = if (remainingMs > 0L) {
+                        getString(R.string.app_lock_rate_limited, (remainingMs + 999L) / 1_000L)
                     } else {
-                        R.string.app_lock_enabled_message
+                        getString(R.string.app_lock_wrong_pin)
                     }
-                    showResultSnackbar(msgRes)
-                    findNavController().popBackStack()
-                } else {
-                    pendingNewPin = ""
-                    step = Step.ENTER_NEW
-                    pinPadController.clear(animateError = true)
-                    renderStep(getString(R.string.app_lock_pin_mismatch))
+                    renderStep(message)
                 }
+            }
+        }
+    }
+
+    private fun saveNewPin(pin: String) {
+        val appContext = requireContext().applicationContext
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Default) {
+            AppLockManager.savePin(appContext, pin)
+            withContext(Dispatchers.Main) {
+                if (!isAdded || _binding == null) return@withContext
+                AppLockManager.markUnlocked()
+                val msgRes = if (args.mode == MODE_CHANGE) {
+                    R.string.app_lock_pin_updated
+                } else {
+                    R.string.app_lock_enabled_message
+                }
+                showResultSnackbar(msgRes)
+                findNavController().popBackStack()
             }
         }
     }
@@ -150,6 +186,7 @@ class PinSetupFragment : BaseFragment(R.layout.fragment_pin_setup) {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        isVerifyingPin = false
         _binding = null
     }
 }

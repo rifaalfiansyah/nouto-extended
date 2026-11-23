@@ -4,7 +4,7 @@
 
 **A fast, offline-first Android notes app built with Kotlin & Material 3 Expressive Design.**
 
-[![Version](https://img.shields.io/badge/version-v1.0.0-6750A4?style=flat-square)](https://github.com/rifaalfiansyah/nouto-extended)
+[![Version](https://img.shields.io/badge/version-v1.0.1-6750A4?style=flat-square)](https://github.com/rifaalfiansyah/nouto-extended)
 [![Min SDK](https://img.shields.io/badge/Android-9.0%2B%20%28API%2028%29-3DDC84?style=flat-square&logo=android&logoColor=white)](https://developer.android.com/about/versions/pie)
 [![Target SDK](https://img.shields.io/badge/Target%20SDK-37-6750A4?style=flat-square)](https://developer.android.com)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](/LICENSE)

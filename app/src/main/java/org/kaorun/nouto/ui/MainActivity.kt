@@ -11,7 +11,11 @@ import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
+import androidx.lifecycle.lifecycleScope
 import de.raphaelebner.roomdatabasebackup.core.RoomBackup
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.kaorun.nouto.R
 import org.kaorun.nouto.databinding.ActivityMainBinding
 import org.kaorun.nouto.ui.components.PinPadController
@@ -25,6 +29,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var pinPadController: PinPadController
     private var hasPromptedBiometricForSession = false
+    private var isVerifyingPin = false
 
     private val lockedBackCallback = object : OnBackPressedCallback(false) {
         override fun handleOnBackPressed() {
@@ -110,15 +115,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handlePinUnlock(pin: String) {
-        if (AppLockManager.verifyPin(this, pin)) {
-            unlockApp()
-        } else {
-            pinPadController.clear(animateError = true)
-            pinPadController.setPrompt(
-                title = getString(R.string.app_lock_locked_title),
-                subtitle = getString(R.string.app_lock_wrong_pin),
-                isError = true
-            )
+        if (isVerifyingPin) return
+        isVerifyingPin = true
+        lifecycleScope.launch(Dispatchers.Default) {
+            val verified = AppLockManager.verifyPin(this@MainActivity, pin)
+            withContext(Dispatchers.Main) {
+                isVerifyingPin = false
+                if (verified) {
+                    unlockApp()
+                } else {
+                    pinPadController.clear(animateError = true)
+                    val remainingMs = AppLockManager.getLockoutRemainingMs(this@MainActivity)
+                    val message = if (remainingMs > 0L) {
+                        getString(R.string.app_lock_rate_limited, (remainingMs + 999L) / 1_000L)
+                    } else {
+                        getString(R.string.app_lock_wrong_pin)
+                    }
+                    pinPadController.setPrompt(
+                        title = getString(R.string.app_lock_locked_title),
+                        subtitle = message,
+                        isError = true
+                    )
+                }
+            }
         }
     }
 

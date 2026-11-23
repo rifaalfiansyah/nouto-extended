@@ -12,8 +12,8 @@ android {
         applicationId = "dev.rifaalfiansyah.nouto"
         minSdk = 28
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
     }
 
     buildTypes {
@@ -69,4 +69,6 @@ dependencies {
     implementation(libs.androidx.biometric)
     implementation(libs.room.database.backup)
     ksp(libs.androidx.room.compiler)
+
+    testImplementation("junit:junit:4.13.2")
 }

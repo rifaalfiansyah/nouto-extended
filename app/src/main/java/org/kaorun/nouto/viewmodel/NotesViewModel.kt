@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import org.kaorun.nouto.data.Note
 import org.kaorun.nouto.data.NoteDatabase
+import org.kaorun.nouto.data.NotePersistencePolicy
 import org.kaorun.nouto.repository.NoteRepository
 import org.kaorun.nouto.repository.PreferenceRepository
 import org.kaorun.nouto.ui.model.LayoutMode
@@ -82,10 +83,12 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateNote(note: Note) {
         viewModelScope.launch {
-            if (note.title.isNullOrBlank() && note.content.isNullOrBlank()) {
+            if (NotePersistencePolicy.shouldDelete(note)) {
                 noteRepository.delete(note)
             } else {
-                noteRepository.update(note)
+                // Autosave may have deleted this row while the editor was empty.
+                // Upsert lets typing again in the same editor restore it.
+                noteRepository.upsert(note)
             }
         }
     }

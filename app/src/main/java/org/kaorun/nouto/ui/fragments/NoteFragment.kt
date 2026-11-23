@@ -78,6 +78,8 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
     private var metadataAnimator: ValueAnimator? = null
     private val metadataHoldHandler = Handler(Looper.getMainLooper())
     private val autoSaveHandler = Handler(Looper.getMainLooper())
+    private val metadataUpdateHandler = Handler(Looper.getMainLooper())
+    private val metadataUpdateRunnable = Runnable { updateMetadata() }
     private val autoSaveRunnable = Runnable {
         if (!isDeleting && !isImporting && _binding != null) {
             saveNote()
@@ -396,7 +398,8 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
 
     private fun onEditorChanged() {
         if (!isInitializingNote && _binding != null && !isImporting) {
-            updateMetadata()
+            metadataUpdateHandler.removeCallbacks(metadataUpdateRunnable)
+            metadataUpdateHandler.postDelayed(metadataUpdateRunnable, METADATA_UPDATE_DEBOUNCE_MS)
             if (hasUnsavedChanges()) {
                 scheduleAutoSave()
             }
@@ -879,11 +882,16 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
     override fun onDestroyView() {
         super.onDestroyView()
         autoSaveHandler.removeCallbacksAndMessages(null)
+        metadataUpdateHandler.removeCallbacksAndMessages(null)
         metadataHoldHandler.removeCallbacksAndMessages(null)
         metadataAnimator?.cancel()
         metadataAnimator = null
         binding.floatingToolbar.animate().cancel()
         rtManager.onDestroy(requireActivity().isFinishing)
         _binding = null
+    }
+
+    private companion object {
+        const val METADATA_UPDATE_DEBOUNCE_MS = 150L
     }
 }

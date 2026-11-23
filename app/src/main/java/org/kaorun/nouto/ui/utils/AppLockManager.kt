@@ -17,8 +17,12 @@ object AppLockManager {
     const val KEY_TIMEOUT = "app_lock_timeout"
     private const val KEY_PIN_HASH = "pin_hash"
     private const val KEY_PIN_SALT = "pin_salt"
+    private const val KEY_PIN_ITERATIONS = "pin_hash_iterations"
+    private const val KEY_FAILED_ATTEMPTS = "pin_failed_attempts"
+    private const val KEY_LOCKOUT_UNTIL = "pin_lockout_until"
 
-    private const val HASH_ITERATIONS = 10_000
+    private const val LEGACY_HASH_ITERATIONS = 10_000
+    private const val HASH_ITERATIONS = 120_000
     private const val HASH_KEY_LENGTH = 256
     private const val BIOMETRIC_AUTHENTICATORS =
         BiometricManager.Authenticators.BIOMETRIC_STRONG or
@@ -71,19 +75,71 @@ object AppLockManager {
         prefs(context).edit {
             putString(KEY_PIN_SALT, Base64.encodeToString(salt, Base64.NO_WRAP))
             putString(KEY_PIN_HASH, Base64.encodeToString(hash, Base64.NO_WRAP))
+            putInt(KEY_PIN_ITERATIONS, HASH_ITERATIONS)
             putBoolean(KEY_ENABLED, true)
+            putInt(KEY_FAILED_ATTEMPTS, 0)
+            putLong(KEY_LOCKOUT_UNTIL, 0L)
         }
-        markUnlocked()
     }
 
     fun verifyPin(context: Context, pin: String): Boolean {
         val p = prefs(context)
+        val now = System.currentTimeMillis()
+        if (getLockoutRemainingMs(context, now) > 0L) return false
         val saltB64 = p.getString(KEY_PIN_SALT, null) ?: return false
         val hashB64 = p.getString(KEY_PIN_HASH, null) ?: return false
         val salt = runCatching { Base64.decode(saltB64, Base64.NO_WRAP) }.getOrNull() ?: return false
         val expectedHash = runCatching { Base64.decode(hashB64, Base64.NO_WRAP) }.getOrNull() ?: return false
-        val actualHash = hashPin(pin, salt)
-        return MessageDigest.isEqual(expectedHash, actualHash)
+        val iterations = p.getInt(KEY_PIN_ITERATIONS, LEGACY_HASH_ITERATIONS)
+            .coerceAtLeast(LEGACY_HASH_ITERATIONS)
+        val actualHash = hashPin(pin, salt, iterations)
+        if (!MessageDigest.isEqual(expectedHash, actualHash)) {
+            recordPinFailure(context, now)
+            return false
+        }
+
+        resetPinFailures(context)
+        if (iterations < HASH_ITERATIONS) {
+            val newSalt = ByteArray(16).also { SecureRandom().nextBytes(it) }
+            val newHash = hashPin(pin, newSalt, HASH_ITERATIONS)
+            p.edit {
+                putString(KEY_PIN_SALT, Base64.encodeToString(newSalt, Base64.NO_WRAP))
+                putString(KEY_PIN_HASH, Base64.encodeToString(newHash, Base64.NO_WRAP))
+                putInt(KEY_PIN_ITERATIONS, HASH_ITERATIONS)
+            }
+        }
+        return true
+    }
+
+    fun getLockoutRemainingMs(context: Context): Long =
+        getLockoutRemainingMs(context, System.currentTimeMillis())
+
+    private fun getLockoutRemainingMs(context: Context, now: Long): Long {
+        val p = prefs(context)
+        return PinAttemptLockout(
+            failedAttempts = p.getInt(KEY_FAILED_ATTEMPTS, 0),
+            lockedUntilMs = p.getLong(KEY_LOCKOUT_UNTIL, 0L)
+        ).remainingMs(now)
+    }
+
+    private fun recordPinFailure(context: Context, now: Long) {
+        val p = prefs(context)
+        val lockout = PinAttemptLockout(
+            failedAttempts = p.getInt(KEY_FAILED_ATTEMPTS, 0),
+            lockedUntilMs = p.getLong(KEY_LOCKOUT_UNTIL, 0L)
+        )
+        lockout.recordFailure(now)
+        p.edit {
+            putInt(KEY_FAILED_ATTEMPTS, lockout.failedAttempts)
+            putLong(KEY_LOCKOUT_UNTIL, lockout.lockedUntilMs)
+        }
+    }
+
+    private fun resetPinFailures(context: Context) {
+        prefs(context).edit {
+            putInt(KEY_FAILED_ATTEMPTS, 0)
+            putLong(KEY_LOCKOUT_UNTIL, 0L)
+        }
     }
 
     fun disableLock(context: Context) {
@@ -92,6 +148,9 @@ object AppLockManager {
             putBoolean(KEY_BIOMETRIC, false)
             remove(KEY_PIN_HASH)
             remove(KEY_PIN_SALT)
+            remove(KEY_PIN_ITERATIONS)
+            remove(KEY_FAILED_ATTEMPTS)
+            remove(KEY_LOCKOUT_UNTIL)
         }
         markUnlocked()
     }
@@ -131,8 +190,8 @@ object AppLockManager {
         suppressNextLock = true
     }
 
-    private fun hashPin(pin: String, salt: ByteArray): ByteArray {
-        val spec = PBEKeySpec(pin.toCharArray(), salt, HASH_ITERATIONS, HASH_KEY_LENGTH)
+    private fun hashPin(pin: String, salt: ByteArray, iterations: Int = HASH_ITERATIONS): ByteArray {
+        val spec = PBEKeySpec(pin.toCharArray(), salt, iterations, HASH_KEY_LENGTH)
         return try {
             SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
         } finally {
