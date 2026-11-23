@@ -10,4 +10,16 @@
         <item>dark</item>
         <item>system</item>
     </string-array>
+    <string-array name="app_lock_timeout_entries">
+        <item>@string/app_lock_timeout_immediately</item>
+        <item>@string/app_lock_timeout_30s</item>
+        <item>@string/app_lock_timeout_1m</item>
+        <item>@string/app_lock_timeout_5m</item>
+    </string-array>
+    <string-array name="app_lock_timeout_values">
+        <item>0</item>
+        <item>30000</item>
+        <item>60000</item>
+        <item>300000</item>
+    </string-array>
 </resources>

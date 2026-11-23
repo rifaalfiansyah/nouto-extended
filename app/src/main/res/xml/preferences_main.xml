@@ -7,6 +7,12 @@
         android:summary="@string/appearance_summary" />
 
     <Preference
+        android:key="screen_app_lock"
+        android:icon="@drawable/lock_24px"
+        android:title="@string/app_lock"
+        android:summary="@string/app_lock_summary" />
+
+    <Preference
         android:key="screen_backup_restore"
         android:icon="@drawable/settings_backup_restore_24px"
         android:title="@string/backup_and_restore"

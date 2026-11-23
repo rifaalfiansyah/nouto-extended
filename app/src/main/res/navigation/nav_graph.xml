@@ -50,6 +50,9 @@
             android:id="@+id/action_settingsMainFragment_to_settingsAppearanceFragment"
             app:destination="@id/settingsAppearanceFragment" />
         <action
+            android:id="@+id/action_settingsMainFragment_to_settingsAppLockFragment"
+            app:destination="@id/settingsAppLockFragment" />
+        <action
             android:id="@+id/action_settingsMainFragment_to_settingsAboutFragment"
             app:destination="@id/settingsAboutFragment" />
         <action
@@ -61,6 +64,25 @@
         android:name="org.kaorun.nouto.ui.fragments.settings.SettingsAppearanceFragment"
         android:label="SettingsAppearanceFragment"
         tools:layout="@layout/fragment_settings" />
+    <fragment
+        android:id="@+id/settingsAppLockFragment"
+        android:name="org.kaorun.nouto.ui.fragments.settings.SettingsAppLockFragment"
+        android:label="SettingsAppLockFragment"
+        tools:layout="@layout/fragment_settings">
+        <action
+            android:id="@+id/action_settingsAppLockFragment_to_pinSetupFragment"
+            app:destination="@id/pinSetupFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/pinSetupFragment"
+        android:name="org.kaorun.nouto.ui.fragments.settings.PinSetupFragment"
+        android:label="PinSetupFragment"
+        tools:layout="@layout/fragment_pin_setup">
+        <argument
+            android:name="mode"
+            app:argType="string"
+            android:defaultValue="setup" />
+    </fragment>
     <fragment
         android:id="@+id/trashFragment"
         android:name="org.kaorun.nouto.ui.fragments.TrashFragment"

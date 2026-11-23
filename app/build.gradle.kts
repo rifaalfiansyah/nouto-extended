@@ -66,6 +66,7 @@ dependencies {
     implementation(libs.androidx.navigation.ui.ktx)
     implementation(libs.androidx.preference)
     implementation(libs.androidx.transition)
+    implementation(libs.androidx.biometric)
     implementation(libs.room.database.backup)
     ksp(libs.androidx.room.compiler)
 }

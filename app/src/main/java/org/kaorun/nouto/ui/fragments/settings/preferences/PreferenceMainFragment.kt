@@ -22,6 +22,13 @@ class PreferenceMainFragment : PreferenceBaseFragment() {
             true
         }
 
+        findPreference<Preference>("screen_app_lock")?.setOnPreferenceClickListener {
+            TransitionManager.endTransitions(parentView)
+            requireParentFragment().findNavController()
+                .navigate(R.id.action_settingsMainFragment_to_settingsAppLockFragment)
+            true
+        }
+
         findPreference<Preference>("screen_backup_restore")?.setOnPreferenceClickListener {
             requireParentFragment().findNavController()
                 .navigate(R.id.action_settingsMainFragment_to_settingsBackupRestoreFragment)

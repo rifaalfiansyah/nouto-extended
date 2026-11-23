@@ -19,6 +19,7 @@ import org.kaorun.nouto.ui.MainActivity
 import org.kaorun.nouto.ui.components.Snackbars
 import org.kaorun.nouto.ui.fragments.base.PreferenceBaseFragment
 import org.kaorun.nouto.ui.fragments.settings.SettingsBackupRestoreFragmentDirections
+import org.kaorun.nouto.ui.utils.AppLockManager
 import org.kaorun.nouto.ui.utils.FileUtils
 
 class PreferenceBackupRestoreFragment : PreferenceBaseFragment() {
@@ -60,11 +61,13 @@ class PreferenceBackupRestoreFragment : PreferenceBaseFragment() {
         }
 
         findPreference<Preference>("import")?.setOnPreferenceClickListener {
+            AppLockManager.suppressNextLockOnce()
             importFilePicker.launch("application/json")
             true
         }
 
         findPreference<Preference>("backup")?.setOnPreferenceClickListener {
+            AppLockManager.suppressNextLockOnce()
             databaseBackup
                 .database(NoteDatabase.getDatabase(requireContext()))
                 .backupLocation(RoomBackup.BACKUP_FILE_LOCATION_CUSTOM_DIALOG)
@@ -96,6 +99,7 @@ class PreferenceBackupRestoreFragment : PreferenceBaseFragment() {
         }
 
         findPreference<Preference>("restore")?.setOnPreferenceClickListener {
+            AppLockManager.suppressNextLockOnce()
             databaseBackup
                 .database(NoteDatabase.getDatabase(requireContext()))
                 .backupLocation(RoomBackup.BACKUP_FILE_LOCATION_CUSTOM_DIALOG)

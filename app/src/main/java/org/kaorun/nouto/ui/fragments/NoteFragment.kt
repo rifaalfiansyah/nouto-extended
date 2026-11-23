@@ -48,6 +48,7 @@ import org.kaorun.nouto.ui.components.DeleteDialog
 import org.kaorun.nouto.ui.components.Snackbars
 import org.kaorun.nouto.ui.components.TextStyleFloatingToolbar
 import org.kaorun.nouto.ui.fragments.base.BaseFragment
+import org.kaorun.nouto.ui.utils.AppLockManager
 import org.kaorun.nouto.ui.utils.DateFormatUtils
 import org.kaorun.nouto.ui.utils.FileUtils
 import org.kaorun.nouto.ui.utils.InsetsHandler
@@ -853,6 +854,7 @@ class NoteFragment : BaseFragment(R.layout.fragment_note) {
             else -> "note.json"
         }
 
+        AppLockManager.suppressNextLockOnce()
         filePicker.launch(defaultFileName)
     }
 

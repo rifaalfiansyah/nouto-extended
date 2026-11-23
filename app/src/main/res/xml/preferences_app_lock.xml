@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        android:title="@string/app_lock_security_category">
+
+        <org.kaorun.nouto.ui.components.MaterialSwitchPreferenceCompat
+            android:key="app_lock_enabled"
+            android:icon="@drawable/lock_24px"
+            android:title="@string/app_lock_enable"
+            android:summary="@string/app_lock_enable_summary"
+            android:persistent="false"
+            android:defaultValue="false" />
+
+        <Preference
+            android:key="app_lock_change_pin"
+            android:icon="@drawable/password_24px"
+            android:title="@string/app_lock_change_pin"
+            android:summary="@string/app_lock_change_pin_summary"
+            android:persistent="false" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="@string/app_lock_options_category">
+
+        <org.kaorun.nouto.ui.components.MaterialSwitchPreferenceCompat
+            android:key="app_lock_biometric"
+            android:icon="@drawable/fingerprint_24px"
+            android:title="@string/app_lock_biometric"
+            android:summary="@string/app_lock_biometric_summary"
+            android:persistent="false"
+            android:defaultValue="false" />
+
+        <org.kaorun.nouto.ui.components.MaterialListPreference
+            android:key="app_lock_timeout"
+            android:icon="@drawable/timer_24px"
+            android:title="@string/app_lock_timeout"
+            android:entries="@array/app_lock_timeout_entries"
+            android:entryValues="@array/app_lock_timeout_values"
+            android:persistent="false"
+            android:defaultValue="0"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+</PreferenceScreen>

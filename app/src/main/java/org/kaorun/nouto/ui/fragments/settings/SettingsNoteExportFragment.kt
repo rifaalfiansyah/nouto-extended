@@ -15,6 +15,7 @@ import org.kaorun.nouto.databinding.FragmentNoteExportBinding
 import org.kaorun.nouto.ui.adapter.NoteExportAdapter
 import org.kaorun.nouto.ui.components.Snackbars
 import org.kaorun.nouto.ui.fragments.base.BaseFragment
+import org.kaorun.nouto.ui.utils.AppLockManager
 import org.kaorun.nouto.ui.utils.FileUtils
 import org.kaorun.nouto.ui.utils.InsetsHandler
 import org.kaorun.nouto.ui.utils.MarginItemDecoration
@@ -90,6 +91,7 @@ class SettingsNoteExportFragment : BaseFragment(R.layout.fragment_note_export) {
                     plainContent.isNotBlank() -> "${plainContent.take(20)}.json"
                     else -> "note.json"
                 }
+                AppLockManager.suppressNextLockOnce()
                 filePicker.launch(defaultFileName)
             }
         )

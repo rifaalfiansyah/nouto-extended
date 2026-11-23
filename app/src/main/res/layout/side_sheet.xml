@@ -108,7 +108,7 @@
                             android:layout_height="24dp"
                             android:contentDescription="@null"
                             android:src="@drawable/delete_24px"
-                            app:tint="?attr/colorOnSecondaryContainer" />
+                            app:tint="?attr/colorOnSurface" />
 
                         <TextView
                             android:layout_width="0dp"
