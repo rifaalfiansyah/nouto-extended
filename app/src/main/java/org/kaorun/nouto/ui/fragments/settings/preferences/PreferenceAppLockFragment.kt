@@ -1,6 +1,8 @@
 package org.kaorun.nouto.ui.fragments.settings.preferences
 
 import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.navigation.fragment.findNavController
@@ -18,6 +20,12 @@ class PreferenceAppLockFragment : PreferenceBaseFragment() {
     private var changePinPref: Preference? = null
     private var biometricSwitch: MaterialSwitchPreferenceCompat? = null
     private var timeoutPref: MaterialListPreference? = null
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        imageView = LayoutInflater.from(requireContext())
+            .inflate(R.layout.illustration_app_lock, listView, false)
+        super.onViewCreated(view, savedInstanceState)
+    }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.preferences_app_lock, rootKey)
